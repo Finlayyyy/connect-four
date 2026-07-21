@@ -3,8 +3,8 @@ use crate::board::HashBoard;
 use crate::board::{Board, CloneBoard, MutBoard, bit_col::BitCol};
 use crate::solver_utils::Position;
 
-use std::hash::Hash;
 use std::fmt::Debug;
+use std::hash::Hash;
 
 //   6 13 20 27 34 41 48
 //  ---------------------
@@ -18,7 +18,7 @@ use std::fmt::Debug;
 #[derive(Clone, PartialEq, Eq)]
 pub struct BitBoard {
     board: u64,
-    mask: u64
+    mask: u64,
 }
 
 const WIDTH: u64 = column::COUNT as u64;
@@ -60,12 +60,16 @@ impl BitBoard {
     pub fn placed_curr_unchecked(&self, col: column::Idx) -> Self {
         BitBoard {
             board: self.board ^ self.mask,
-            mask: self.mask | (self.mask + bottom_col_mask(col))
+            mask: self.mask | (self.mask + bottom_col_mask(col)),
         }
     }
 
-    fn curr_win_mask(&self) -> u64 { Self::win_mask(self.board, self.mask) }
-    fn opp_win_mask(&self) -> u64 { Self::win_mask(self.board ^ self.mask, self.mask )}
+    fn curr_win_mask(&self) -> u64 {
+        Self::win_mask(self.board, self.mask)
+    }
+    fn opp_win_mask(&self) -> u64 {
+        Self::win_mask(self.board ^ self.mask, self.mask)
+    }
 
     fn win_mask(board: u64, mask: u64) -> u64 {
         // Vertical
@@ -80,7 +84,7 @@ impl BitBoard {
         r |= p & (board >> (3 * WIDTH)); // 1 1 1 0 => 0 0 0 1
 
         // Positive Diagonal
-        let mut p = (board << (WIDTH - 1)) & (board << (2 * (WIDTH - 1))); 
+        let mut p = (board << (WIDTH - 1)) & (board << (2 * (WIDTH - 1)));
         r |= p & (board << (3 * (WIDTH - 1)));
         r |= p & (board >> (WIDTH - 1));
         p >>= 3 * (WIDTH - 1);
@@ -88,7 +92,7 @@ impl BitBoard {
         r |= p & (board >> (3 * (WIDTH - 1)));
 
         // Negative Diagonal
-        let mut p = (board << (WIDTH + 1)) & (board << (2 * (WIDTH + 1))); 
+        let mut p = (board << (WIDTH + 1)) & (board << (2 * (WIDTH + 1)));
         r |= p & (board << (3 * (WIDTH + 1)));
         r |= p & (board >> (WIDTH + 1));
         p >>= 3 * (WIDTH + 1);
@@ -96,10 +100,14 @@ impl BitBoard {
         r |= p & (board >> (3 * (WIDTH + 1)));
 
         r & (BOARD_MASK ^ mask)
-    } 
+    }
 
-    pub fn curr_win_count(&self) -> u32 { (self.possible_mask() & self.curr_win_mask()).count_ones() }
-    pub fn curr_can_win(&self) -> bool { self.curr_win_count() > 0 }
+    pub fn curr_win_count(&self) -> u32 {
+        (self.possible_mask() & self.curr_win_mask()).count_ones()
+    }
+    pub fn curr_can_win(&self) -> bool {
+        self.curr_win_count() > 0
+    }
 
     fn possible_nonlosing_mask(&self) -> Result<u64, ()> {
         let possible = self.possible_mask();
@@ -117,20 +125,22 @@ impl BitBoard {
         }
 
         mask &= !(opp_win >> 1); // Avoid playing below an opponent win
-        if mask == 0 { return Err(()); } // No nonlosing option
+        if mask == 0 {
+            return Err(());
+        } // No nonlosing option
         Ok(mask)
     }
 
-    pub fn possible_nonlosing_nexts(&self) -> Result<impl Iterator<Item=(column::Idx, Self)>, ()> {
+    pub fn possible_nonlosing_nexts(
+        &self,
+    ) -> Result<impl Iterator<Item = (column::Idx, Self)>, ()> {
         let mask = self.possible_nonlosing_mask()?;
-        Result::Ok(column::CENTRED.iter()
-            .filter_map(move |&col| {
-                match ((col_mask(col) & mask) > 0) {
-                    true => Some((col, self.placed(col, self.curr()).unwrap())),
-                    false => None
-                }
-            })
-        )
+        Result::Ok(column::CENTRED.iter().filter_map(move |&col| {
+            match ((col_mask(col) & mask) > 0) {
+                true => Some((col, self.placed(col, self.curr()).unwrap())),
+                false => None,
+            }
+        }))
     }
 
     pub fn heuristic(&self) -> u32 {
@@ -139,26 +149,24 @@ impl BitBoard {
 }
 
 impl Board for BitBoard {
-    const EMPTY: Self = BitBoard {
-        board: 0,
-        mask: 0
-    };
+    const EMPTY: Self = BitBoard { board: 0, mask: 0 };
 
     fn count_moves(&self) -> usize {
-        self.board.count_ones() as usize
-        + (self.board ^ self.mask).count_ones() as usize
+        self.board.count_ones() as usize + (self.board ^ self.mask).count_ones() as usize
     }
 
     fn calc_curr(&self) -> Token {
         match self.count_moves() % 2 {
             0 => Token::STARTING,
             1 => Token::SECOND,
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 
     fn get(&self, cell: Cell) -> Option<Token> {
-        if self.mask & cell_mask(cell) == 0 { return None };
+        if self.mask & cell_mask(cell) == 0 {
+            return None;
+        };
 
         if self.board & cell_mask(cell) == 0 {
             Some(self.calc_curr().opp())
@@ -173,22 +181,30 @@ impl Board for BitBoard {
 
     fn top(&self, col: column::Idx) -> Option<Cell> {
         match self.col_count(col) {
-            0 => None, 
-            r => Some(Cell { col, row: row::Idx::raw(r-1) })
+            0 => None,
+            r => Some(Cell {
+                col,
+                row: row::Idx::raw(r - 1),
+            }),
         }
     }
 
     fn can_place(&self, col: column::Idx) -> bool {
-        self.mask & cell_mask(Cell { col, row: row::Idx::TOP }) == 0
+        self.mask
+            & cell_mask(Cell {
+                col,
+                row: row::Idx::TOP,
+            })
+            == 0
     }
 
     fn force_place(&mut self, col: column::Idx, token: Token) {
         if (token == self.calc_curr()) {
-            self.board ^= self.mask; 
+            self.board ^= self.mask;
             self.mask |= self.mask + bottom_col_mask(col);
         } else {
             self.mask |= self.mask + bottom_col_mask(col);
-            self.board ^= self.mask; 
+            self.board ^= self.mask;
         }
     }
 
@@ -201,27 +217,37 @@ impl Board for BitBoard {
 
         // Horizontal
         let m = board & (board >> WIDTH);
-        if m & (m >> (2 * WIDTH)) > 0 { return true; }
+        if m & (m >> (2 * WIDTH)) > 0 {
+            return true;
+        }
 
         // Negative Diagonal
-        let m = board & (board >> (WIDTH-1));
-        if m & (m >> (2*(WIDTH - 1))) > 0 { return true; }
+        let m = board & (board >> (WIDTH - 1));
+        if m & (m >> (2 * (WIDTH - 1))) > 0 {
+            return true;
+        }
 
         // Positive Diagonal
-        let m = board & (board >> (WIDTH+1));
-        if m & (m >> (2*(WIDTH+1))) > 0 { return true; }
+        let m = board & (board >> (WIDTH + 1));
+        if m & (m >> (2 * (WIDTH + 1))) > 0 {
+            return true;
+        }
 
         // Vertical alignment
         let m = board & (board >> 1);
-        if m & (m >> 2) > 0 { return true; }
+        if m & (m >> 2) > 0 {
+            return true;
+        }
 
         false
     }
 
-    fn is_won_at(&self, cell: Cell) -> bool { self.is_won(self.get(cell).unwrap()) }
+    fn is_won_at(&self, cell: Cell) -> bool {
+        self.is_won(self.get(cell).unwrap())
+    }
 }
 
-impl CloneBoard for BitBoard { }
+impl CloneBoard for BitBoard {}
 
 impl MutBoard for BitBoard {
     fn unplace(&mut self, cell: Cell) {
@@ -239,8 +265,12 @@ impl HashBoard for BitBoard {
 }
 
 impl Position for BitBoard {
-    fn move_count(&self) -> usize { self.count_moves() }
-    fn curr(&self) -> Token { self.calc_curr() }
+    fn move_count(&self) -> usize {
+        self.count_moves()
+    }
+    fn curr(&self) -> Token {
+        self.calc_curr()
+    }
 }
 
 fn show_mask(mask: u64) -> String {
@@ -266,7 +296,13 @@ fn show_mask(mask: u64) -> String {
 
 impl Debug for BitBoard {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "BitBoard {{ board: {}, mask: {}, curr: {}}}", self.board, self.mask, self.curr())?;
+        writeln!(
+            f,
+            "BitBoard {{ board: {}, mask: {}, curr: {}}}",
+            self.board,
+            self.mask,
+            self.curr()
+        )?;
         for row in row::TOP_DOWN {
             for col in column::LEFT..=column::RIGHT {
                 let b = self.board & cell_mask(Cell { row, col }) != 0;
@@ -288,7 +324,6 @@ mod tests {
     use super::*;
     use crate::board::Moves;
 
-    
     make_board_tests!(BitBoard);
     make_mut_board_tests!(BitBoard);
 
@@ -301,10 +336,12 @@ mod tests {
                 let possible = b.possible_mask();
                 for col in column::LEFT..=column::RIGHT {
                     if col_mask(col) & possible > 0 {
-                        assert!(b.clone().place(col, b.curr()).is_some(), "Could not place in col given by possible @ {col}");
+                        assert!(
+                            b.clone().place(col, b.curr()).is_some(),
+                            "Could not place in col given by possible @ {col}"
+                        );
                     }
                 }
-
             }
         }
     }
@@ -315,12 +352,20 @@ mod tests {
             for len in 0..41 {
                 let moves = Moves::random(len);
                 let b = BitBoard::from_moves(&moves);
-                if b.is_won(b.curr()) || b.is_won(b.opp()) { continue; }
+                if b.is_won(b.curr()) || b.is_won(b.opp()) {
+                    continue;
+                }
                 let Ok(mut nexts) = b.possible_nonlosing_nexts() else {
-                    assert!(b.nexts(b.curr()).all(|(col, next)| next.curr_can_win()), "nonlosing missed a nonlosing move");
+                    assert!(
+                        b.nexts(b.curr()).all(|(col, next)| next.curr_can_win()),
+                        "nonlosing missed a nonlosing move"
+                    );
                     continue;
                 };
-                assert!(nexts.all(|(col, next)| !next.curr_can_win()), "nonlosing returned a losing move");
+                assert!(
+                    nexts.all(|(col, next)| !next.curr_can_win()),
+                    "nonlosing returned a losing move"
+                );
             }
         }
     }

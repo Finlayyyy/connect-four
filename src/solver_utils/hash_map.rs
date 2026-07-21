@@ -1,7 +1,9 @@
 use hashbrown::HashTable;
 use crate::{board::{Board, HashBoard}, solver_utils::{Position, position}};
 
-pub const DEFAULT_SIZE: u64 = (1 << 23) + 9;
+/// Large prime number for hash table size
+/// *sizeof::<u64>() = ~200MB 
+pub const DEFAULT_SIZE: u64 = 25_165_843;
 
 pub struct HashMap {
     table: Vec<u64>,
