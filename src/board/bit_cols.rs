@@ -1,8 +1,7 @@
-use crate::solver_utils::Position;
 use crate::basic::*;
 use crate::board::HashBoard;
 use crate::board::{Board, CloneBoard, MutBoard, bit_col::BitCol};
-
+use crate::solver_utils::Position;
 
 /// A board implementation using bit manipulation for storage.
 /// Each column is stored as a BitCol.
@@ -31,9 +30,7 @@ impl Board for BitCols {
     }
 
     fn count_moves(&self) -> usize {
-        self.cols.iter()
-            .map(|col| col.count())
-            .sum()
+        self.cols.iter().map(|col| col.count()).sum()
     }
 
     fn col_count(&self, col: column::Idx) -> usize {
@@ -54,7 +51,7 @@ impl Board for BitCols {
         self.cols[col_idx] = self.cols[col_idx].pushed(token)?;
         Some(Cell {
             col,
-            row: self.get_col(col).top().unwrap() // todo! Should unwrap or no?
+            row: self.get_col(col).top().unwrap(), // todo! Should unwrap or no?
         })
     }
 }
@@ -78,8 +75,12 @@ impl HashBoard for BitCols {
 }
 
 impl Position for BitCols {
-    fn move_count(&self) -> usize { self.count_moves() }
-    fn curr(&self) -> Token { self.calc_curr() }
+    fn move_count(&self) -> usize {
+        self.count_moves()
+    }
+    fn curr(&self) -> Token {
+        self.calc_curr()
+    }
 }
 
 #[cfg(test)]

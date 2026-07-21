@@ -1,13 +1,20 @@
+use crate::{
+    board::{Board, HashBoard},
+    solver_utils::{Position, position},
+};
 use hashbrown::HashTable;
-use crate::{board::{Board, HashBoard}, solver_utils::{Position, position}};
 
-/// Large prime number for hash table size
-/// *sizeof::<u64>() = ~200MB 
-pub const DEFAULT_SIZE: u64 = 25_165_843;
+/// Very large prime number for hash table size
+/// * sizeof::<u64>() = ~200MB
+pub const LARGE_SIZE: u64 = 25_165_843;
+
+// Relatively small prime number for smaller hash table
+// * sizeof::<u64>() = ~1MB
+pub const SMALL_SIZE: u64 = 196613;
 
 pub struct HashMap {
     table: Vec<u64>,
-    max_count: u64
+    max_count: u64,
 }
 
 impl HashMap {
@@ -19,9 +26,9 @@ impl HashMap {
     const MAX_CACHE_DEPTH: usize = position::MAX_MOVES - 5;
 
     pub fn new(max_count: u64) -> Self {
-        HashMap { 
-            table: vec![0; max_count.try_into().unwrap()], 
-            max_count 
+        HashMap {
+            table: vec![0; max_count.try_into().unwrap()],
+            max_count,
         }
     }
 
@@ -37,8 +44,10 @@ impl HashMap {
     /// MIN_SCORE <= score <= MAX_SCORE
     pub fn insert<B: HashBoard + Position>(&mut self, board: &B, score: isize) {
         // Ensure key fits in 55 bits
-        debug_assert!(board.key() & (!Self::KEY_MASK) == 0); 
-        if board.move_count() > Self::MAX_CACHE_DEPTH { return }
+        debug_assert!(board.key() & (!Self::KEY_MASK) == 0);
+        if board.move_count() > Self::MAX_CACHE_DEPTH {
+            return;
+        }
 
         let key = board.key();
         let entry = Self::pack_entry(key, score);
@@ -48,13 +57,14 @@ impl HashMap {
     }
 
     fn unpack_entry(entry: u64) -> Option<(u64, isize)> {
-        if entry & 1 == 0 { return None }
+        if entry & 1 == 0 {
+            return None;
+        }
         let key = (entry >> Self::KEY_OFFSET) & Self::KEY_MASK;
         let score = (entry >> Self::SCORE_OFFSET) & Self::SCORE_MASK;
         let score = isize::try_from(score).unwrap() + position::MIN_SCORE;
         Some((key, score))
     }
-
 
     pub fn get<B: HashBoard>(&mut self, board: &B) -> Option<isize> {
         let key = board.key();
@@ -63,7 +73,7 @@ impl HashMap {
         let (other_key, score) = Self::unpack_entry(entry)?;
         match key == other_key {
             true => Some(score),
-            false => None
+            false => None,
         }
     }
 

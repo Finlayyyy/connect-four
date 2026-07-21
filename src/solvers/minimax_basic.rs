@@ -2,29 +2,38 @@ use std::cmp::max;
 use std::ops::ControlFlow;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use crate::solver_utils::*;
 use crate::basic::*;
 use crate::board::{CloneBoard, MutBoard};
+use crate::solver_utils::*;
 
-
-pub fn minimax_mut<P: Position + MutBoard, S: SolverManager>(pos: P, boss: &mut S) -> ControlFlow<S::Break, isize> {
+pub fn minimax_mut<P: Position + MutBoard, S: SolverManager>(
+    pos: P,
+    boss: &mut S,
+) -> ControlFlow<S::Break, isize> {
     let mut pos = pos;
     minimax_mut_helper(&mut pos, boss)
 }
 
-fn minimax_mut_helper<P: Position + MutBoard, S: SolverManager>(pos: &mut P, boss: &mut S) -> ControlFlow<S::Break, isize> {
+fn minimax_mut_helper<P: Position + MutBoard, S: SolverManager>(
+    pos: &mut P,
+    boss: &mut S,
+) -> ControlFlow<S::Break, isize> {
     boss.check()?;
 
-    if pos.completed() { return ControlFlow::Continue(0) }
+    if pos.completed() {
+        return ControlFlow::Continue(0);
+    }
 
     let mut best_score = isize::MIN;
 
     for col in column::CENTRED {
-        let Some(cell) = pos.place_curr(col) else { continue };
+        let Some(cell) = pos.place_curr(col) else {
+            continue;
+        };
         if pos.is_won_at(cell) {
             let score = pos.just_won_score();
             pos.unplace(cell);
-            return ControlFlow::Continue(score)
+            return ControlFlow::Continue(score);
         }
 
         let score = -minimax_mut_helper(pos, boss)?;
@@ -35,11 +44,14 @@ fn minimax_mut_helper<P: Position + MutBoard, S: SolverManager>(pos: &mut P, bos
     ControlFlow::Continue(best_score)
 }
 
-pub fn minimax_clone<P: Position + CloneBoard, S: SolverManager>(pos: P, boss: &mut S) -> ControlFlow<S::Break, isize> {
+pub fn minimax_clone<P: Position + CloneBoard, S: SolverManager>(
+    pos: P,
+    boss: &mut S,
+) -> ControlFlow<S::Break, isize> {
     boss.check()?;
 
     if pos.completed() {
-        return ControlFlow::Continue(0)
+        return ControlFlow::Continue(0);
     }
 
     let mut best_score = isize::MIN;
@@ -60,12 +72,7 @@ mod mut_tests {
     use super::*;
     use crate::solvers::testing::*;
 
-    make_solver_tests!(
-        solve_using(&minimax_mut),
-        BitCols,
-        BitBoard,
-        SymmBoard
-    );
+    make_solver_tests!(solve_using(&minimax_mut), BitCols, BitBoard, SymmBoard);
 }
 
 #[cfg(test)]
@@ -73,10 +80,5 @@ mod clone_tests {
     use super::*;
     use crate::solvers::testing::*;
 
-    make_solver_tests!(
-        solve_using(&minimax_clone),
-        BitCols,
-        BitBoard,
-        SymmBoard
-    );
+    make_solver_tests!(solve_using(&minimax_clone), BitCols, BitBoard, SymmBoard);
 }

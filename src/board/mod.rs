@@ -1,23 +1,25 @@
 use crate::basic::*;
 
 use rand::RngExt;
-use std::{fmt::{Debug, Display}, num::IntErrorKind::Empty};
+use std::{
+    fmt::{Debug, Display},
+    num::IntErrorKind::Empty,
+};
 
 #[macro_use]
 pub mod testing;
 pub mod array_board;
+pub mod bit_board;
 mod bit_col;
 pub mod bit_cols;
 pub mod moves;
 pub mod symm_board;
-pub mod bit_board;
 
 pub use array_board::ArrayBoard;
+pub use bit_board::BitBoard;
 pub use bit_cols::BitCols;
 pub use moves::Moves;
 pub use symm_board::SymmBoard;
-pub use bit_board::BitBoard;
-
 
 /// Trait containing common board functionality.
 pub trait Board: Debug + Sized + Eq {
@@ -104,7 +106,7 @@ pub trait Board: Debug + Sized + Eq {
             false => None,
         }
     }
-    
+
     /// For a given column and token,
     /// calculate the length of same-colour tokens in each (relevant) direction
     /// (left, right, down, left-down, right-down) if that token *were* placed in that column.
@@ -126,8 +128,14 @@ pub trait Board: Debug + Sized + Eq {
         let mut consider_count = |count| match count {
             0 => unreachable!(),
             1 => Some(()),
-            2 => { pairs += 1; Some(()) },
-            3 => { triples += 1; Some(()) },
+            2 => {
+                pairs += 1;
+                Some(())
+            }
+            3 => {
+                triples += 1;
+                Some(())
+            }
             4.. => None,
         };
         // horizontal = left + right
@@ -141,7 +149,6 @@ pub trait Board: Debug + Sized + Eq {
         Some((pairs, triples))
     }
 
-    
     /// Checks there is a win (a sequence of four same-colour tokens) that includes the token
     /// at the given Cell. The winning player is given by the colour of the token at the cell.
     /// Panics if the column is empty.
@@ -162,7 +169,7 @@ pub trait Board: Debug + Sized + Eq {
             for row in (row::Idx::BOTTOM..=top.row) {
                 let cell = Cell { row, col };
                 if self.get(cell).unwrap() == token && self.is_won_at(cell) {
-                    return true
+                    return true;
                 }
             }
         }
@@ -267,10 +274,8 @@ pub trait CloneBoard: Board + Clone {
         })
     }
 
-
     fn can_win(&self, token: Token) -> bool {
-        self.nexts(token)
-            .any(|(col, board)| board.is_won(token))
+        self.nexts(token).any(|(col, board)| board.is_won(token))
     }
 
     // Horizontal reflection by copying each cell to its reflected position
@@ -295,7 +300,7 @@ pub trait MutBoard: Board {
     /// Does not check if there is a token at the cell.
     fn unplace(&mut self, cell: Cell);
 
-    /// To a sequence of moves 
+    /// To a sequence of moves
     fn to_moves(self) -> Moves {
         todo!();
         let mut board = self;

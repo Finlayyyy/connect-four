@@ -27,25 +27,32 @@ fn minimax_alphabeta_helper<P: Position + CloneBoard, S: SolverManager>(
     }
 
     beta = min(beta, pos.will_win_score());
-    if (alpha >= beta) { return ControlFlow::Continue(beta) };
+    if (alpha >= beta) {
+        return ControlFlow::Continue(beta);
+    };
 
     for (col, next_pos) in pos.nexts(pos.curr()) {
         if next_pos.is_won_at_col(col) {
             return ControlFlow::Continue(next_pos.just_won_score());
         }
         let score = -minimax_alphabeta_helper(next_pos, boss, -beta, -alpha)?;
-        if score >= beta { return ControlFlow::Continue(score) };
+        if score >= beta {
+            return ControlFlow::Continue(score);
+        };
         alpha = max(alpha, score);
     }
     ControlFlow::Continue(alpha)
 }
-
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::solvers::testing::*;
 
-    make_solver_tests!(solve_using(&minimax_alphabeta), BitCols, BitBoard, SymmBoard);
-
+    make_solver_tests!(
+        solve_using(&minimax_alphabeta),
+        BitCols,
+        BitBoard,
+        SymmBoard
+    );
 }

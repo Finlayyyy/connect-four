@@ -63,7 +63,7 @@ impl MutBoard for ArrayBoard {
 mod tests {
     use super::*;
     make_board_tests!(ArrayBoard);
-    
+
     make_mut_board_tests!(ArrayBoard);
 }
 
@@ -71,8 +71,8 @@ mod tests {
 mod pos_tests {
     use super::*;
     use crate::solver_utils::*;
-    
+
     make_board_tests!(WithInfo<ArrayBoard>);
-    
+
     make_mut_board_tests!(WithInfo<ArrayBoard>);
 }

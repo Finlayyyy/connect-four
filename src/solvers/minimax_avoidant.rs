@@ -1,9 +1,8 @@
+use arrayvec::ArrayVec;
+use heapless::binary_heap::{BinaryHeap, Max};
 use std::cmp::{max, min};
 use std::hash::Hash;
 use std::ops::ControlFlow;
-use arrayvec::ArrayVec;
-use heapless::binary_heap::{BinaryHeap, Max};
-
 
 use crate::basic::*;
 use crate::board::{Board, CloneBoard, HashBoard, MutBoard};
@@ -13,8 +12,8 @@ pub fn minimax_avoidant<P: Position + CloneBoard + HashBoard, S: SolverManager>(
     pos: P,
     boss: &mut S,
 ) -> ControlFlow<S::Break, isize> {
-    let mut lower = HashMap::new(hash_map::DEFAULT_SIZE);
-    let mut upper = HashMap::new(hash_map::DEFAULT_SIZE);
+    let mut lower = HashMap::new(hash_map::LARGE_SIZE);
+    let mut upper = HashMap::new(hash_map::LARGE_SIZE);
     let result = minimax_avoidant_helper(
         pos,
         boss,
@@ -31,24 +30,21 @@ pub fn minimax_avoidant<P: Position + CloneBoard + HashBoard, S: SolverManager>(
 struct NbhdCounts(usize, usize, usize, usize);
 impl NbhdCounts {
     fn heuristic(&self) -> usize {
-        self.0 * 1000
-        + self.1 * 100
-        + self.2 * 10
-        + self.3
+        self.0 * 1000 + self.1 * 100 + self.2 * 10 + self.3
     }
 }
 
 #[derive(Clone, Debug)]
 enum MoveResult {
-    CurrWin,        // connect-4 for curr
-    BlockOppWin,    // stop opp making connect-4
-    LetOppWin,      // opp can now play on top of curr's token and connect-4
+    CurrWin,      // connect-4 for curr
+    BlockOppWin,  // stop opp making connect-4
+    LetOppWin,    // opp can now play on top of curr's token and connect-4
     ForcedOppWin, // opp has a potential connect-4 both at the current cell and the one above, curr has lost
-    Nbhd(NbhdCounts)
+    Nbhd(NbhdCounts),
 }
 
 impl NbhdCounts {
-    fn new_at<P: Position + Board >(pos: &P, cell: Cell) -> MoveResult {
+    fn new_at<P: Position + Board>(pos: &P, cell: Cell) -> MoveResult {
         let Some((curr_pairs, curr_triples)) = pos.count_adjacent_at(cell, pos.curr()) else {
             return MoveResult::CurrWin;
         };
@@ -72,7 +68,6 @@ impl NbhdCounts {
     }
 }
 
-
 pub fn minimax_avoidant_helper<P: Position + CloneBoard + HashBoard, S: SolverManager>(
     pos: P,
     boss: &mut S,
@@ -82,13 +77,21 @@ pub fn minimax_avoidant_helper<P: Position + CloneBoard + HashBoard, S: SolverMa
     upper: &mut HashMap,
 ) -> ControlFlow<S::Break, isize> {
     boss.check()?;
-    if pos.completed() { return ControlFlow::Continue(0) };
+    if pos.completed() {
+        return ControlFlow::Continue(0);
+    };
 
-    if let Some(min) = lower.get(&pos) { alpha = max(alpha, min) };
-    if let Some(max) = upper.get(&pos) { beta = min(beta, max) };
-    if alpha >= beta { return ControlFlow::Continue(beta) };
+    if let Some(min) = lower.get(&pos) {
+        alpha = max(alpha, min)
+    };
+    if let Some(max) = upper.get(&pos) {
+        beta = min(beta, max)
+    };
+    if alpha >= beta {
+        return ControlFlow::Continue(beta);
+    };
 
-    let mut moves = MoveSorter::<{column::COUNT}, _, _>::new();
+    let mut moves = MoveSorter::<{ column::COUNT }, _, _>::new();
     let mut must_play = None;
     let mut must_avoid = None;
     let mut will_lose = false;
@@ -104,17 +107,21 @@ pub fn minimax_avoidant_helper<P: Position + CloneBoard + HashBoard, S: SolverMa
             // Playing this move will allow opponent to win
             MoveResult::LetOppWin => must_avoid = Some(cell.col),
             // there are no immediate wins or losses
-            MoveResult::Nbhd(nbhd) => moves.push_sorting(nbhd.heuristic(), cell.col)
+            MoveResult::Nbhd(nbhd) => moves.push_sorting(nbhd.heuristic(), cell.col),
         }
     }
-    if will_lose { return ControlFlow::Continue(pos.will_lose_score()) };
-    if moves.is_empty() && must_play.is_none() { must_play = must_avoid };
+    if will_lose {
+        return ControlFlow::Continue(pos.will_lose_score());
+    };
+    if moves.is_empty() && must_play.is_none() {
+        must_play = must_avoid
+    };
 
     // We must play in this column either to stop the opponent from winning,
     // or because it is the only option left
-    if let Some(col) = must_play { 
+    if let Some(col) = must_play {
         let next_pos = pos.placed(col, pos.curr()).unwrap();
-        
+
         let score = -minimax_avoidant_helper(next_pos, boss, -beta, -alpha, lower, upper)?;
         alpha = max(alpha, score);
         return ControlFlow::Continue(score);
@@ -122,14 +129,16 @@ pub fn minimax_avoidant_helper<P: Position + CloneBoard + HashBoard, S: SolverMa
 
     alpha = max(alpha, pos.will_lose_score() + 1);
     beta = min(beta, pos.will_win_score() - 1);
-    if alpha >= beta { return ControlFlow::Continue(beta) };
+    if alpha >= beta {
+        return ControlFlow::Continue(beta);
+    };
 
     for col in moves {
         let next_pos = pos.placed(col, pos.curr()).unwrap();
         let score = -minimax_avoidant_helper(next_pos, boss, -beta, -alpha, lower, upper)?;
         alpha = max(alpha, score);
 
-        if score >= beta { 
+        if score >= beta {
             lower.insert(&pos, score);
             return ControlFlow::Continue(score);
         }
@@ -139,17 +148,10 @@ pub fn minimax_avoidant_helper<P: Position + CloneBoard + HashBoard, S: SolverMa
     ControlFlow::Continue(alpha)
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::solvers::testing::*;
 
-    make_solver_tests!(
-        solve_using(&minimax_avoidant),
-        BitCols,
-        BitBoard,
-        SymmBoard
-    );
-
+    make_solver_tests!(solve_using(&minimax_avoidant), BitCols, BitBoard, SymmBoard);
 }

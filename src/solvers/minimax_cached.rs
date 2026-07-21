@@ -5,8 +5,11 @@ use crate::basic::*;
 use crate::board::{CloneBoard, HashBoard, MutBoard};
 use crate::solver_utils::*;
 
-pub fn minimax_cached<P: Position + CloneBoard + HashBoard, S: SolverManager>(pos: P, boss: &mut S) -> ControlFlow<S::Break, isize> {
-    let mut cache = HashMap::new(hash_map::DEFAULT_SIZE);
+pub fn minimax_cached<P: Position + CloneBoard + HashBoard, S: SolverManager>(
+    pos: P,
+    boss: &mut S,
+) -> ControlFlow<S::Break, isize> {
+    let mut cache = HashMap::new(hash_map::LARGE_SIZE);
     let result = minimax_cached_helper(pos, boss, &mut cache);
     result
 }
@@ -14,7 +17,7 @@ pub fn minimax_cached<P: Position + CloneBoard + HashBoard, S: SolverManager>(po
 pub fn minimax_cached_helper<P: Position + CloneBoard + HashBoard, S: SolverManager>(
     pos: P,
     boss: &mut S,
-    cache: &mut HashMap
+    cache: &mut HashMap,
 ) -> ControlFlow<S::Break, isize> {
     boss.check()?;
     if pos.completed() {
@@ -32,7 +35,7 @@ pub fn minimax_cached_helper<P: Position + CloneBoard + HashBoard, S: SolverMana
             best = next_pos.just_won_score();
             break;
         }
-        
+
         let score = -minimax_cached_helper(next_pos, boss, cache)?;
         best = max(best, score);
     }
@@ -44,6 +47,6 @@ pub fn minimax_cached_helper<P: Position + CloneBoard + HashBoard, S: SolverMana
 mod tests {
     use super::*;
     use crate::solvers::testing::*;
-    
+
     make_solver_tests!(solve_using(&minimax_cached), BitCols, BitBoard, SymmBoard);
 }

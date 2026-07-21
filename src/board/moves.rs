@@ -30,7 +30,7 @@ impl Moves {
             .chars()
             .map(|c| column::Idx::try_from(c.to_digit(10).unwrap() - 1).unwrap());
         Moves {
-            moves: cols.zip(tokens).collect()
+            moves: cols.zip(tokens).collect(),
         }
     }
 
@@ -51,7 +51,9 @@ impl Moves {
 impl Board for Moves {
     const EMPTY: Self = Moves { moves: Vec::new() };
 
-    fn count_moves(&self) -> usize { self.moves.len() }
+    fn count_moves(&self) -> usize {
+        self.moves.len()
+    }
 
     fn get(&self, cell: Cell) -> Option<Token> {
         let mut col_count = 0;
@@ -75,8 +77,8 @@ impl Board for Moves {
         let row = row::Idx::try_from(row).ok()?;
         self.moves.push((col, token));
         Some(Cell {
-            col, 
-            row: row::Idx::try_from(row).unwrap()
+            col,
+            row: row::Idx::try_from(row).unwrap(),
         })
     }
 
@@ -105,15 +107,15 @@ impl Display for Moves {
         for (col, _) in &self.moves {
             write!(f, "{}", 1 + usize::from(*col))?;
         }
-        writeln!(f,"")
+        writeln!(f, "")
     }
 }
 
 impl IntoIterator for Moves {
     type Item = (column::Idx, Token);
-    
+
     type IntoIter = <Vec<(column::Idx, Token)> as IntoIterator>::IntoIter;
-    
+
     fn into_iter(self) -> Self::IntoIter {
         self.moves.into_iter()
     }
@@ -131,7 +133,7 @@ mod tests {
 mod pos_tests {
     use super::*;
     use crate::solver_utils::*;
-    
+
     make_board_tests!(WithInfo<Moves>);
     make_mut_board_tests!(WithInfo<Moves>);
 }

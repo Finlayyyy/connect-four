@@ -1,6 +1,12 @@
-use std::{sync::{Arc, atomic::{AtomicBool, Ordering}}, thread, time::Duration};
 use std::ops::ControlFlow;
-
+use std::{
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
+    thread,
+    time::Duration,
+};
 
 pub trait SolverManager {
     type Break;
@@ -11,7 +17,9 @@ pub trait SolverManager {
 pub struct LaissezFaire {}
 impl SolverManager for LaissezFaire {
     type Break = !;
-    fn check(&mut self) -> ControlFlow<!, ()> { ControlFlow::Continue(()) }
+    fn check(&mut self) -> ControlFlow<!, ()> {
+        ControlFlow::Continue(())
+    }
 }
 
 #[derive(Debug)]
@@ -29,17 +37,16 @@ impl Logger {
 }
 impl SolverManager for Logger {
     type Break = !;
-    fn check(&mut self) -> ControlFlow<!, ()> { 
+    fn check(&mut self) -> ControlFlow<!, ()> {
         self.count += 1;
-        ControlFlow::Continue(()) 
+        ControlFlow::Continue(())
     }
 }
-
 
 #[derive(Debug)]
 pub struct WithTimeout<S> {
     timeout: Arc<AtomicBool>,
-    pub inner: S
+    pub inner: S,
 }
 
 impl<S> WithTimeout<S> {
@@ -54,22 +61,24 @@ impl<S: SolverManager<Break = !>> SolverManager for WithTimeout<S> {
         let ControlFlow::Continue(()) = self.inner.check();
         match self.timeout.load(Ordering::Relaxed) {
             false => ControlFlow::Continue(()),
-            true => ControlFlow::Break(())
+            true => ControlFlow::Break(()),
         }
     }
 }
 
-
 #[derive(Debug)]
 pub struct Timeout<S> {
     max_time: Duration,
-    pub timer: WithTimeout<S>
+    pub timer: WithTimeout<S>,
 }
 
 impl<S> Timeout<S> {
     pub fn new(max_time: Duration, inner: S) -> Self {
         let timeout = Arc::new(AtomicBool::new(false));
-        Timeout { max_time, timer: WithTimeout::new(timeout, inner) }
+        Timeout {
+            max_time,
+            timer: WithTimeout::new(timeout, inner),
+        }
     }
 
     pub fn start_timer(&mut self) {
@@ -79,12 +88,12 @@ impl<S> Timeout<S> {
             thread::sleep(max_time);
             timeout.store(true, Ordering::Relaxed);
         });
-
     }
 }
 impl<S: SolverManager<Break = !>> SolverManager for Timeout<S> {
     type Break = ();
 
-    fn check(&mut self) -> ControlFlow<(), ()> { self.timer.check() }
+    fn check(&mut self) -> ControlFlow<(), ()> {
+        self.timer.check()
+    }
 }
-

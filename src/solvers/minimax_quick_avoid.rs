@@ -11,8 +11,8 @@ pub fn minimax_quick_avoid<S: SolverManager>(
     pos: BitBoard,
     boss: &mut S,
 ) -> ControlFlow<S::Break, isize> {
-    let mut lower = HashMap::new(hash_map::DEFAULT_SIZE);
-    let mut upper = HashMap::new(hash_map::DEFAULT_SIZE);
+    let mut lower = HashMap::new(hash_map::LARGE_SIZE);
+    let mut upper = HashMap::new(hash_map::LARGE_SIZE);
     let result = minimax_quick_avoid_helper(
         pos,
         boss,

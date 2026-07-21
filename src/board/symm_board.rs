@@ -11,19 +11,35 @@ use std::hash::Hash;
 pub struct SymmBoard(BitCols);
 
 impl SymmBoard {
-    fn get_col(&self, col: column::Idx) -> BitCol { self.0.get_col(col) }
-    fn get_cols(&self) -> &[BitCol] { self.0.get_cols() }
+    fn get_col(&self, col: column::Idx) -> BitCol {
+        self.0.get_col(col)
+    }
+    fn get_cols(&self) -> &[BitCol] {
+        self.0.get_cols()
+    }
 }
 
 impl Board for SymmBoard {
     const EMPTY: Self = SymmBoard(BitCols::EMPTY);
 
-    fn get(&self, cell: Cell) -> Option<Token> { self.0.get(cell) }
-    fn count_moves(&self) -> usize { self.0.count_moves() }
-    fn col_count(&self, col: column::Idx) -> usize { self.0.col_count(col) }
-    fn can_place(&self, col: column::Idx) -> bool { self.0.can_place(col) }
-    fn force_place(&mut self, col: column::Idx, token: Token) { self.0.force_place(col, token) }
-    fn place(&mut self, col: column::Idx, token: Token) -> Option<Cell> { self.0.place(col, token) }
+    fn get(&self, cell: Cell) -> Option<Token> {
+        self.0.get(cell)
+    }
+    fn count_moves(&self) -> usize {
+        self.0.count_moves()
+    }
+    fn col_count(&self, col: column::Idx) -> usize {
+        self.0.col_count(col)
+    }
+    fn can_place(&self, col: column::Idx) -> bool {
+        self.0.can_place(col)
+    }
+    fn force_place(&mut self, col: column::Idx, token: Token) {
+        self.0.force_place(col, token)
+    }
+    fn place(&mut self, col: column::Idx, token: Token) -> Option<Cell> {
+        self.0.place(col, token)
+    }
 }
 
 impl CloneBoard for SymmBoard {}
@@ -52,14 +68,18 @@ impl HashBoard for SymmBoard {
         } else {
             (right, left)
         };
-    
+
         left | (centre << (3 * 8)) | (right << (4 * 8))
     }
 }
 
 impl Position for SymmBoard {
-    fn move_count(&self) -> usize { self.0.move_count() }
-    fn curr(&self) -> Token { self.0.curr() }
+    fn move_count(&self) -> usize {
+        self.0.move_count()
+    }
+    fn curr(&self) -> Token {
+        self.0.curr()
+    }
 }
 
 impl PartialEq for SymmBoard {

@@ -55,7 +55,7 @@ impl BitCol {
         }
     }
 
-    /// Pop the top token from the column.  
+    /// Pop the top token from the column.
     /// Debug asserts that the column is not empty.
     pub fn force_pop(&mut self) {
         debug_assert!(!self.is_empty(), "Tried to pop from an empty column.");
@@ -75,9 +75,9 @@ impl BitCol {
     pub fn pushed(self, token: Token) -> Option<BitCol> {
         let token_bit = token_to_u8(token);
         let pushed = (self.0 << 1) | token_bit;
-        
+
         /// check whether pushed is still valid
-        if pushed & 0b1000_0000 != 0 { 
+        if pushed & 0b1000_0000 != 0 {
             None // column has overflowed
         } else {
             Some(BitCol(pushed))
@@ -91,9 +91,13 @@ impl BitCol {
     }
 
     /// Returns the underlying u8 value of the column.
-    pub fn to_u8(&self) -> u8 { self.0 }
+    pub fn to_u8(&self) -> u8 {
+        self.0
+    }
 
-    pub fn to_u64(&self) -> u64 { self.0 as u64}
+    pub fn to_u64(&self) -> u64 {
+        self.0 as u64
+    }
 }
 
 #[cfg(test)]
@@ -106,7 +110,6 @@ mod tests {
 
         assert!(col.is_empty());
         assert_eq!(col.top(), None);
-
 
         for row in row::BOTTOM_UP {
             col.force_push(Token::A);

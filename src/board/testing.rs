@@ -95,20 +95,27 @@ pub mod board_tests {
                     let count_prev = b.col_count(cell.col);
                     let placed = b.place(cell.col, curr);
                     let count_post = b.col_count(cell.col);
-                    assert_eq!(count_prev + 1, count_post, "{name}::col_count should increment after place @ {}.", cell);
-                    assert_eq!(Some(cell), placed ,"`{name}::next_cells` predicted incorrectly.");
-                    
+                    assert_eq!(
+                        count_prev + 1,
+                        count_post,
+                        "{name}::col_count should increment after place @ {}.",
+                        cell
+                    );
+                    assert_eq!(
+                        Some(cell),
+                        placed,
+                        "`{name}::next_cells` predicted incorrectly."
+                    );
                 }
                 curr = curr.next();
             }
-            
         }
     }
 }
 
 pub mod mut_board_tests {
-    use crate::board::Moves;
     use super::*;
+    use crate::board::Moves;
 
     pub fn place_unplace_eq<B: Clone + MutBoard>(name: &str) {
         let mut board = B::EMPTY;
@@ -118,10 +125,18 @@ pub mod mut_board_tests {
                 let temp = board.clone();
 
                 let Some(cell) = board.place(col, token) else {
-                    panic!("`{name}::place returned None on a non-full column @ cell={}.", Cell { row, col });
+                    panic!(
+                        "`{name}::place returned None on a non-full column @ cell={}.",
+                        Cell { row, col }
+                    );
                 };
                 board.unplace(cell);
-                assert_eq!(temp, board, "`{name}::unplace∘{name}::place` != id @ cell={}.", Cell { row, col });
+                assert_eq!(
+                    temp,
+                    board,
+                    "`{name}::unplace∘{name}::place` != id @ cell={}.",
+                    Cell { row, col }
+                );
                 board.place(col, token);
                 token = token.next();
             }
@@ -132,10 +147,12 @@ pub mod mut_board_tests {
         for _ in 0..100 {
             for len in 0..42 {
                 let mut b = B::from_moves(&Moves::random(len));
-                assert_eq!(b, B::from_moves(&b.clone().to_moves()), "`{name}::from_moves∘`{name}::to_moves != id");
-
+                assert_eq!(
+                    b,
+                    B::from_moves(&b.clone().to_moves()),
+                    "`{name}::from_moves∘`{name}::to_moves != id"
+                );
             }
-            
         }
     }
 }

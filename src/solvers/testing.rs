@@ -1,12 +1,11 @@
 use std::ops::ControlFlow;
 
-use crate::solver_utils::*;
 use crate::basic::{Cell, Token, column, row};
 use crate::benching::{END_EASY, read_testset};
 use crate::board::{Board, CloneBoard, MutBoard};
+use crate::solver_utils::*;
 
 pub use crate::board::*;
-
 
 use paste;
 
@@ -53,7 +52,7 @@ pub fn run_easy_tests<P: Position>(f: impl Fn(P) -> isize) {
 
     for (moves, score) in read_testset(END_EASY).into_iter().take(COUNT) {
         let pos = P::from_moves(&moves);
-        let mut boss = LaissezFaire { };
+        let mut boss = LaissezFaire {};
         assert_eq!(f(pos), score, "Solver failed moveset {moves}");
     }
 }

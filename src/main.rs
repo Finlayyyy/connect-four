@@ -1,25 +1,25 @@
 #![feature(step_trait, generic_const_exprs, never_type)]
 #![allow(dead_code, unused, incomplete_features)]
 
+use crate::basic::*;
+use crate::benching::*;
+use crate::board::*;
+use crate::solver_utils::*;
 use crate::solvers::minimax_avoidant::minimax_avoidant_helper;
 use crate::solvers::minimax_ordered::minimax_ordered_helper;
 use crate::solvers::minimax_quick_avoid::minimax_quick_avoid_helper;
-use crate::basic::*;
-use crate::board::*;
-use crate::benching::*;
 use crate::solvers::*;
-use crate::solver_utils::*;
 
+use std::env;
 use std::ops::ControlFlow;
 use std::time::{Duration, Instant};
-use std::env;
 
 mod basic;
 #[macro_use]
 mod benching;
 mod board;
-mod solvers;
 mod solver_utils;
+mod solvers;
 
 fn debug_solver() {
     let moves = Moves::from_string("4614725646672422715321763");
@@ -28,7 +28,11 @@ fn debug_solver() {
     let right = &minimax_ordered;
 
     let mut boss = LaissezFaire {};
-    println!("{:?} != {:?}", wrong(pos.clone(), &mut boss), right(pos.clone(), &mut boss));
+    println!(
+        "{:?} != {:?}",
+        wrong(pos.clone(), &mut boss),
+        right(pos.clone(), &mut boss)
+    );
 
     'outer: while !pos.completed() {
         'inner: for (col, next_pos) in pos.clone().nexts(pos.curr()) {
@@ -49,19 +53,29 @@ fn debug_solver() {
     println!("FINAL");
 
     pos.display();
-    println!("{:?} != {:?}", wrong(pos.clone(), &mut boss), right(pos.clone(), &mut boss));
+    println!(
+        "{:?} != {:?}",
+        wrong(pos.clone(), &mut boss),
+        right(pos.clone(), &mut boss)
+    );
     // println!("{}", pos.board().clone().to_moves().to_string());
     println!("");
 }
 
 fn play() {
+    let tests = vec![vec![(Moves::EMPTY, 1)]];
+    let bencher = Bencher::new(tests, &["EMPTY"], Duration::from_mins(120));
+    bench!(bencher, BitBoard, minimax_quick_avoid);
+}
+
+fn little_play() {
     let moves = "444443433365666233222755555226617771";
     let moves = Moves::from_string(moves);
     let pos = WithInfo::<BitCols>::from_moves(&moves);
     pos.display();
-    
-    let mut lower = HashMap::new(hash_map::DEFAULT_SIZE);
-    let mut upper = HashMap::new(hash_map::DEFAULT_SIZE);
+
+    let mut lower = HashMap::new(hash_map::LARGE_SIZE);
+    let mut upper = HashMap::new(hash_map::LARGE_SIZE);
     let mut alpha = pos.will_lose_score();
     let mut beta = pos.will_win_score();
 
@@ -72,17 +86,18 @@ fn play() {
     for (col, next) in pos.nexts(pos.curr()) {
         let mut boss = Timeout::new(Duration::from_secs(5), LaissezFaire {});
         boss.start_timer();
-        let result = minimax_avoidant_helper(next, &mut boss, -beta, -alpha, &mut lower, &mut upper);
+        let result =
+            minimax_avoidant_helper(next, &mut boss, -beta, -alpha, &mut lower, &mut upper);
         println!("[{col}] => {result:?}");
         match result {
             ControlFlow::Continue(score) if -score > best => {
                 best = -score;
                 best_col = Some(col);
-            },
+            }
             ControlFlow::Break(_) if broken.is_none() => {
                 broken = Some(col);
             }
-            _ => ()
+            _ => (),
         }
     }
     let col = match best_col {
@@ -94,7 +109,6 @@ fn play() {
     println!("Chose col `{col:?} with score `{best}");
     let next = pos.placed(col, pos.curr()).unwrap();
     next.display();
-
 }
 
 fn bench_easy() {
@@ -151,10 +165,30 @@ fn bench_extreme() {
     let testsets = [MIDDLE_MEDIUM, BEGIN_EASY, BEGIN_MEDIUM, BEGIN_HARD];
     let tests = Bencher::read_testsets(&testsets, 100);
     let bencher = Bencher::new(tests, &testsets, Duration::from_secs(120));
-    bench!(bencher, BitCols, "deep_ordered<BitCols>", &minimax_deepening(&minimax_ordered_helper));
-    bench!(bencher, BitCols, "deep_avoidant<BitCols>", &minimax_deepening(&minimax_avoidant_helper));
-    bench!(bencher, SymmBoard, "deep_avoidant<SymmBoard>", &minimax_deepening(&minimax_avoidant_helper));
-    bench!(bencher, BitBoard,"deep_quick<BitBoard>", &minimax_deepening(&minimax_quick_avoid_helper));
+    bench!(
+        bencher,
+        BitCols,
+        "deep_ordered<BitCols>",
+        &minimax_deepening(&minimax_ordered_helper)
+    );
+    bench!(
+        bencher,
+        BitCols,
+        "deep_avoidant<BitCols>",
+        &minimax_deepening(&minimax_avoidant_helper)
+    );
+    bench!(
+        bencher,
+        SymmBoard,
+        "deep_avoidant<SymmBoard>",
+        &minimax_deepening(&minimax_avoidant_helper)
+    );
+    bench!(
+        bencher,
+        BitBoard,
+        "deep_quick<BitBoard>",
+        &minimax_deepening(&minimax_quick_avoid_helper)
+    );
 }
 
 fn bench() {
@@ -170,7 +204,6 @@ fn display_usage() {
     println!("       ConnectFour bench       \n");
     println!("       ConnectFour help        \n");
     println!("       ConnectFour play        \n");
-
 }
 
 fn main() {
@@ -180,26 +213,22 @@ fn main() {
         Some("--help") => display_usage(),
         Some("debug") => debug_solver(),
         Some("-h") => display_usage(),
-        Some("bench") => {
-            match args.next().map(|s| s.to_lowercase()).as_deref() {
-                None => bench(),
-                Some("easy") => bench_easy(),
-                Some("medium") => bench_medium(),
-                Some("hard") => bench_hard(),
-                Some("extreme") => bench_extreme(),
-                Some(cmd) => {
-                    println!("Unrecognised command '{}'\n", cmd);
-                    display_usage();
-                }
+        Some("bench") => match args.next().map(|s| s.to_lowercase()).as_deref() {
+            None => bench(),
+            Some("easy") => bench_easy(),
+            Some("medium") => bench_medium(),
+            Some("hard") => bench_hard(),
+            Some("extreme") => bench_extreme(),
+            Some(cmd) => {
+                println!("Unrecognised command '{}'\n", cmd);
+                display_usage();
             }
-        }
+        },
         Some("help") => display_usage(),
-        Some("play") => play(), 
+        Some("play") => play(),
         Some(cmd) => {
             println!("Unrecognised command '{}'\n", cmd);
             display_usage();
         }
     }
-
-
 }

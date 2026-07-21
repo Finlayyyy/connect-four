@@ -1,4 +1,3 @@
-
 use std::cmp::{max, min};
 use std::ops::ControlFlow;
 
@@ -6,12 +5,20 @@ use crate::basic::*;
 use crate::board::{CloneBoard, HashBoard, MutBoard};
 use crate::solver_utils::*;
 
-pub fn minimax_ordered<P: Position + CloneBoard + HashBoard, S: SolverManager>(pos: P, boss: &mut S) -> ControlFlow<S::Break, isize> {
-    let mut lower = HashMap::new(hash_map::DEFAULT_SIZE);
-    let mut upper = HashMap::new(hash_map::DEFAULT_SIZE);
-    let result = minimax_ordered_helper(pos, boss, position::MIN_SCORE, position::MAX_SCORE, &mut lower, &mut upper);
-    ;
-    ;
+pub fn minimax_ordered<P: Position + CloneBoard + HashBoard, S: SolverManager>(
+    pos: P,
+    boss: &mut S,
+) -> ControlFlow<S::Break, isize> {
+    let mut lower = HashMap::new(hash_map::LARGE_SIZE);
+    let mut upper = HashMap::new(hash_map::LARGE_SIZE);
+    let result = minimax_ordered_helper(
+        pos,
+        boss,
+        position::MIN_SCORE,
+        position::MAX_SCORE,
+        &mut lower,
+        &mut upper,
+    );
     result
 }
 
@@ -21,17 +28,25 @@ pub fn minimax_ordered_helper<P: Position + CloneBoard + HashBoard, S: SolverMan
     mut alpha: isize,
     mut beta: isize,
     lower: &mut HashMap,
-    upper: &mut HashMap
+    upper: &mut HashMap,
 ) -> ControlFlow<S::Break, isize> {
     boss.check()?;
-    if pos.completed() { return ControlFlow::Continue(0) };
+    if pos.completed() {
+        return ControlFlow::Continue(0);
+    };
 
-    if let Some(low) = lower.get(&pos) { alpha = max(alpha, low) };
-    if let Some(up) = upper.get(&pos) { beta = min(beta, up) };
-    if alpha >= beta { return ControlFlow::Continue(beta) };
-    
-    let mut moves = MoveSorter::<{column::COUNT}, _, _>::new();
-    
+    if let Some(low) = lower.get(&pos) {
+        alpha = max(alpha, low)
+    };
+    if let Some(up) = upper.get(&pos) {
+        beta = min(beta, up)
+    };
+    if alpha >= beta {
+        return ControlFlow::Continue(beta);
+    };
+
+    let mut moves = MoveSorter::<{ column::COUNT }, _, _>::new();
+
     for (col, next_pos) in pos.nexts(pos.curr()) {
         let cell = next_pos.top(col).unwrap();
         match next_pos.count_adjacent_at(cell, pos.curr()) {
@@ -48,12 +63,14 @@ pub fn minimax_ordered_helper<P: Position + CloneBoard + HashBoard, S: SolverMan
     }
     alpha = max(alpha, pos.will_lose_score());
     beta = min(beta, pos.will_win_score() - 1);
-    if alpha >= beta { return ControlFlow::Continue(beta) };
+    if alpha >= beta {
+        return ControlFlow::Continue(beta);
+    };
 
     for (col, next_pos) in moves {
         let score = -minimax_ordered_helper(next_pos, boss, -beta, -alpha, lower, upper)?;
-        if score >= beta { 
-            lower.insert(&pos, score);       
+        if score >= beta {
+            lower.insert(&pos, score);
             return ControlFlow::Continue(score);
         }
         alpha = max(alpha, score);
@@ -69,10 +86,5 @@ mod tests {
     use super::*;
     use crate::solvers::testing::*;
 
-    make_solver_tests!(
-        solve_using(&minimax_ordered),
-        BitCols,
-        BitBoard,
-        SymmBoard
-    );
+    make_solver_tests!(solve_using(&minimax_ordered), BitCols, BitBoard, SymmBoard);
 }
