@@ -14,9 +14,6 @@ use std::ops::ControlFlow;
 use std::time::{Duration, Instant};
 use std::env;
 
-use hashbrown::HashMap;
-
-
 mod basic;
 #[macro_use]
 mod benching;
@@ -63,8 +60,8 @@ fn play() {
     let pos = WithInfo::<BitCols>::from_moves(&moves);
     pos.display();
     
-    let mut lower = HashMap::new();
-    let mut upper = HashMap::new();
+    let mut lower = HashMap::new(hash_map::DEFAULT_SIZE);
+    let mut upper = HashMap::new(hash_map::DEFAULT_SIZE);
     let mut alpha = pos.will_lose_score();
     let mut beta = pos.will_win_score();
 

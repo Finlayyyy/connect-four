@@ -6,32 +6,25 @@ pub trait SolverManager {
     type Break;
 
     fn check(&mut self) -> ControlFlow<Self::Break, ()>;
-    fn log_bytes(&mut self, size: usize);
 }
-
 #[derive(Debug)]
 pub struct LaissezFaire {}
 impl SolverManager for LaissezFaire {
     type Break = !;
     fn check(&mut self) -> ControlFlow<!, ()> { ControlFlow::Continue(()) }
-    fn log_bytes(&mut self, size: usize) { } // that's nice, don't care
 }
 
 #[derive(Debug)]
 pub struct Logger {
     count: usize,
-    alloc_size: usize
 }
 impl Logger {
     pub fn new() -> Self {
-        Logger { count: 0, alloc_size: 0 }
+        Logger { count: 0 }
     }
 
     pub fn count(&self) -> usize {
         self.count
-    }
-    pub fn alloc_size(&self) -> usize {
-        self.alloc_size
     }
 }
 impl SolverManager for Logger {
@@ -40,10 +33,6 @@ impl SolverManager for Logger {
         self.count += 1;
         ControlFlow::Continue(()) 
     }
-
-    fn log_bytes(&mut self, size: usize) { 
-        self.alloc_size += size;
-    } 
 }
 
 
@@ -67,10 +56,6 @@ impl<S: SolverManager<Break = !>> SolverManager for WithTimeout<S> {
             false => ControlFlow::Continue(()),
             true => ControlFlow::Break(())
         }
-    }
-
-    fn log_bytes(&mut self, size: usize) {
-        self.inner.log_bytes(size);
     }
 }
 
@@ -101,6 +86,5 @@ impl<S: SolverManager<Break = !>> SolverManager for Timeout<S> {
     type Break = ();
 
     fn check(&mut self) -> ControlFlow<(), ()> { self.timer.check() }
-    fn log_bytes(&mut self, size: usize) { self.timer.log_bytes(size); }
 }
 

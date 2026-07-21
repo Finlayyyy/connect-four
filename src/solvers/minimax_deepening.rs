@@ -1,8 +1,5 @@
-use binary_heap_plus::*;
 use std::cmp::{max, min};
-use std::hash::Hash;
 use std::ops::ControlFlow;
-use hashbrown::HashMap;
 
 use crate::solvers::minimax_ordered::minimax_ordered_helper;
 use crate::solvers::minimax_avoidant::minimax_avoidant_helper;
@@ -14,7 +11,7 @@ pub fn minimax_deepening<P, S, F>(f: &'static F) -> (impl Fn(P, &mut S) -> Contr
 where 
     P: Position + CloneBoard + HashBoard,
     S: SolverManager,
-    F: Fn(P, &mut S, isize, isize, &mut HashMap<u64, isize>, &mut HashMap<u64, isize>) -> ControlFlow<S::Break, isize>,
+    F: Fn(P, &mut S, isize, isize, &mut HashMap, &mut HashMap) -> ControlFlow<S::Break, isize>,
 
 {
     |pos, boss| minimax_deepening_with(pos, boss, f)
@@ -24,12 +21,12 @@ fn minimax_deepening_with<P, S, F>(pos: P, boss: &mut S, f: &F) -> ControlFlow<S
 where 
     P: Position + CloneBoard + HashBoard,
     S: SolverManager,
-    F: Fn(P, &mut S, isize, isize, &mut HashMap<u64, isize>, &mut HashMap<u64, isize>) -> ControlFlow<S::Break, isize> 
+    F: Fn(P, &mut S, isize, isize, &mut HashMap, &mut HashMap) -> ControlFlow<S::Break, isize> 
 {
     if pos.can_win(pos.curr()) { return ControlFlow::Continue(pos.will_win_score()) }
 
-    let mut lower = HashMap::new();
-    let mut upper = HashMap::new();
+    let mut lower = HashMap::new(hash_map::DEFAULT_SIZE);
+    let mut upper = HashMap::new(hash_map::DEFAULT_SIZE);
 
     boss.check()?;
     let mut min = pos.will_lose_score();
@@ -44,8 +41,8 @@ where
         else { min = score };
     }
     
-    boss.log_bytes(lower.allocation_size());
-    boss.log_bytes(upper.allocation_size());
+    ;
+    ;
     ControlFlow::Continue(min)
 }
 

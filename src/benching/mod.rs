@@ -71,12 +71,12 @@ impl Bencher {
         assert_eq!(tests.len(), names.len());
         print!("~~~ BENCH START ~~~ {:>10.0}ms         |", max_time.as_millis());
         for &name in names  {
-            print!(" {:<25}|", name);
+            print!(" {:<19}|", name);
         }
         println!();
         print!("                                         |");
         for test in tests.iter() {
-            print!("                    /{:>4} |", test.len());
+            print!("              /{:>4} |", test.len());
         }
         println!("");
         Bencher {
@@ -109,9 +109,8 @@ impl Bencher {
             let (dur_len, dur_sum) = durs.fold((0,0), |(l, s), dur| (l + 1, s + dur));
             let mean_dur = dur_sum as f64 / dur_len as f64;
             let mean_count = boss.timer.inner.count() as f64 / dur_len as f64;
-            let mean_mem = boss.timer.inner.alloc_size() as f64 / dur_len as f64;
 
-            print!("{:4.0}ms {:.2e}# {:3.0}MB {:4.0}/|", mean_dur, mean_count, mean_mem/1e6, dur_len);
+            print!("{:4.0}ms {:.2e}# {:4.0}/|", mean_dur, mean_count, dur_len);
             if dur_len < set.len() { break };
         }
         println!();

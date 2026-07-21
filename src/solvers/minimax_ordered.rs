@@ -1,19 +1,17 @@
-use binary_heap_plus::*;
+
 use std::cmp::{max, min};
-use std::hash::Hash;
 use std::ops::ControlFlow;
-use hashbrown::HashMap;
 
 use crate::basic::*;
 use crate::board::{CloneBoard, HashBoard, MutBoard};
 use crate::solver_utils::*;
 
 pub fn minimax_ordered<P: Position + CloneBoard + HashBoard, S: SolverManager>(pos: P, boss: &mut S) -> ControlFlow<S::Break, isize> {
-    let mut lower = HashMap::new();
-    let mut upper = HashMap::new();
+    let mut lower = HashMap::new(hash_map::DEFAULT_SIZE);
+    let mut upper = HashMap::new(hash_map::DEFAULT_SIZE);
     let result = minimax_ordered_helper(pos, boss, position::MIN_SCORE, position::MAX_SCORE, &mut lower, &mut upper);
-    boss.log_bytes(lower.allocation_size());
-    boss.log_bytes(upper.allocation_size());
+    ;
+    ;
     result
 }
 
@@ -22,14 +20,14 @@ pub fn minimax_ordered_helper<P: Position + CloneBoard + HashBoard, S: SolverMan
     boss: &mut S,
     mut alpha: isize,
     mut beta: isize,
-    lower: &mut HashMap<u64, isize>,
-    upper: &mut HashMap<u64, isize>
+    lower: &mut HashMap,
+    upper: &mut HashMap
 ) -> ControlFlow<S::Break, isize> {
     boss.check()?;
     if pos.completed() { return ControlFlow::Continue(0) };
 
-    if let Some(&low) = lower.get(&pos.key()) { alpha = max(alpha, low) };
-    if let Some(&up) = upper.get(&pos.key()) { beta = min(beta, up) };
+    if let Some(low) = lower.get(&pos) { alpha = max(alpha, low) };
+    if let Some(up) = upper.get(&pos) { beta = min(beta, up) };
     if alpha >= beta { return ControlFlow::Continue(beta) };
     
     let mut moves = MoveSorter::<{column::COUNT}, _, _>::new();
@@ -55,13 +53,13 @@ pub fn minimax_ordered_helper<P: Position + CloneBoard + HashBoard, S: SolverMan
     for (col, next_pos) in moves {
         let score = -minimax_ordered_helper(next_pos, boss, -beta, -alpha, lower, upper)?;
         if score >= beta { 
-            lower.insert(pos.key(), score);       
+            lower.insert(&pos, score);       
             return ControlFlow::Continue(score);
         }
         alpha = max(alpha, score);
     }
 
-    upper.insert(pos.key(), alpha);
+    upper.insert(&pos, alpha);
 
     ControlFlow::Continue(alpha)
 }

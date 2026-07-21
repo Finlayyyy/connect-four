@@ -1,10 +1,5 @@
-use binary_heap_plus;
-use hashbrown::HashMap;
 use std::cmp::{max, min};
-use std::hash::Hash;
 use std::ops::ControlFlow;
-use arrayvec::ArrayVec;
-use heapless::binary_heap::{BinaryHeap, Max};
 
 use crate::solver_utils::*;
 use crate::basic::*;
@@ -16,8 +11,8 @@ pub fn minimax_quick_avoid<S: SolverManager>(
     pos: BitBoard,
     boss: &mut S,
 ) -> ControlFlow<S::Break, isize> {
-    let mut lower = HashMap::new();
-    let mut upper = HashMap::new();
+    let mut lower = HashMap::new(hash_map::DEFAULT_SIZE);
+    let mut upper = HashMap::new(hash_map::DEFAULT_SIZE);
     let result = minimax_quick_avoid_helper(
         pos,
         boss,
@@ -26,8 +21,8 @@ pub fn minimax_quick_avoid<S: SolverManager>(
         &mut lower,
         &mut upper,
     );
-    boss.log_bytes(lower.allocation_size());
-    boss.log_bytes(upper.allocation_size());
+    ;
+    ;
     result
 }
 
@@ -36,8 +31,8 @@ pub fn minimax_quick_avoid_helper<S: SolverManager>(
     boss: &mut S,
     mut alpha: isize,
     mut beta: isize,
-    lower: &mut HashMap<u64, isize>,
-    upper: &mut HashMap<u64, isize>,
+    lower: &mut HashMap,
+    upper: &mut HashMap,
 ) -> ControlFlow<S::Break, isize> {
     boss.check()?;
     if pos.completed() { return ControlFlow::Continue(0) };
@@ -53,8 +48,8 @@ pub fn minimax_quick_avoid_helper<S: SolverManager>(
 
     alpha = max(alpha, pos.will_lose_score() + 1);
     beta = min(beta, pos.will_win_score() - 1);
-    if let Some(&min) = lower.get(&pos.key()) { alpha = max(alpha, min) };
-    if let Some(&max) = upper.get(&pos.key()) { beta = min(beta, max) };
+    if let Some(min) = lower.get(&pos) { alpha = max(alpha, min) };
+    if let Some(max) = upper.get(&pos) { beta = min(beta, max) };
     if alpha >= beta { return ControlFlow::Continue(beta) };
 
     for col in moves {
@@ -64,14 +59,14 @@ pub fn minimax_quick_avoid_helper<S: SolverManager>(
 
         if score >= beta { 
             if pos.move_count() <= MAX_CACHE_DEPTH {
-                lower.insert(pos.key(), score);
+                lower.insert(&pos, score);
             }
             return ControlFlow::Continue(score);
         }
     }
     
     if pos.move_count() <= MAX_CACHE_DEPTH {
-        upper.insert(pos.key(), alpha);
+        upper.insert(&pos, alpha);
     }
     
     ControlFlow::Continue(alpha)

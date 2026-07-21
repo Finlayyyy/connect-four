@@ -1,6 +1,4 @@
-use hashbrown::HashMap;
 use std::cmp::{max, min};
-use std::hash::{Hash, RandomState};
 use std::ops::ControlFlow;
 
 use crate::basic::*;
@@ -8,23 +6,22 @@ use crate::board::{CloneBoard, HashBoard, MutBoard};
 use crate::solver_utils::*;
 
 pub fn minimax_cached<P: Position + CloneBoard + HashBoard, S: SolverManager>(pos: P, boss: &mut S) -> ControlFlow<S::Break, isize> {
-    let mut cache = HashMap::new();
+    let mut cache = HashMap::new(hash_map::DEFAULT_SIZE);
     let result = minimax_cached_helper(pos, boss, &mut cache);
-    boss.log_bytes(cache.allocation_size());
     result
 }
 
 pub fn minimax_cached_helper<P: Position + CloneBoard + HashBoard, S: SolverManager>(
     pos: P,
     boss: &mut S,
-    cache: &mut HashMap<u64, isize>,
+    cache: &mut HashMap
 ) -> ControlFlow<S::Break, isize> {
     boss.check()?;
     if pos.completed() {
         return ControlFlow::Continue(0);
     }
 
-    if let Some(&cached_result) = cache.get(&pos.key()) {
+    if let Some(cached_result) = cache.get(&pos) {
         return ControlFlow::Continue(cached_result);
     }
 
@@ -39,7 +36,7 @@ pub fn minimax_cached_helper<P: Position + CloneBoard + HashBoard, S: SolverMana
         let score = -minimax_cached_helper(next_pos, boss, cache)?;
         best = max(best, score);
     }
-    cache.insert(pos.key(), best);
+    cache.insert(&pos, best);
     ControlFlow::Continue(best)
 }
 

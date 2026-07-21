@@ -3,9 +3,8 @@ use crate::solver_utils::*;
 use crate::solvers::minimax_ab_cached::minimax_ab_cached_helper;
 use crate::basic::*;
 use crate::board::{Board, CloneBoard, HashBoard};
-use hashbrown::HashMap;
+
 use std::cmp::{max, min};
-use std::hash::Hash;
 use std::ops::ControlFlow;
 
 /// Type to store the difference in height of each column with its reflection,
@@ -35,15 +34,13 @@ fn make_diffs<B: Board>(board: &B) -> Option<SymmDiff> {
 }
 
 pub fn minimax_symm<P: Position + CloneBoard + HashBoard, S: SolverManager>(pos: P, boss: &mut S) -> ControlFlow<S::Break, isize> {
-    let mut lower = HashMap::new();
-    let mut upper = HashMap::new();
+    let mut lower = HashMap::new(hash_map::DEFAULT_SIZE);
+    let mut upper = HashMap::new(hash_map::DEFAULT_SIZE);
     let result = if let Some(diffs) = make_diffs(&pos) {
         minimax_symm_helper(pos, boss, position::MIN_SCORE, position::MAX_SCORE, &mut lower, &mut upper, diffs)
     } else {
         minimax_ab_cached_helper(pos, boss, position::MIN_SCORE, position::MAX_SCORE, &mut lower, &mut upper)
     };
-    boss.log_bytes(lower.allocation_size());
-    boss.log_bytes(upper.allocation_size());
     result
 }
 
@@ -89,16 +86,16 @@ fn minimax_symm_helper<P: Position + CloneBoard + HashBoard, S: SolverManager>(
     boss: &mut S,
     mut alpha: isize,
     mut beta: isize,
-    lower: &mut HashMap<u64, isize>,
-    upper: &mut HashMap<u64, isize>,
+    lower: &mut HashMap,
+    upper: &mut HashMap,
     diffs: SymmDiff,
 ) -> ControlFlow<S::Break, isize> {
     boss.check()?;
     if pos.completed() { return ControlFlow::Continue(0) };
 
     beta = min(beta, pos.will_win_score());
-    if let Some(&min) = lower.get(&pos.key()) { alpha = max(alpha, min) };
-    if let Some(&max) = upper.get(&pos.key()) { beta = min(beta, max) };
+    if let Some(min) = lower.get(&pos) { alpha = max(alpha, min) };
+    if let Some(max) = upper.get(&pos) { beta = min(beta, max) };
     if alpha >= beta { return ControlFlow::Continue(beta) };
 
     for (diffs, col, next_pos) in next_boards(&pos, diffs) {
@@ -113,13 +110,13 @@ fn minimax_symm_helper<P: Position + CloneBoard + HashBoard, S: SolverManager>(
         };
 
         if score >= beta { 
-            lower.insert(pos.key(), score);
+            lower.insert(&pos, score);
             return ControlFlow::Continue(score);
         }
         alpha = max(alpha, score);
     }
 
-    upper.insert(pos.key(), alpha);
+    upper.insert(&pos, alpha);
     ControlFlow::Continue(alpha)
 }
 
