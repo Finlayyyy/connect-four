@@ -5,7 +5,7 @@ use std::cmp::min;
 use std::ops::ControlFlow;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use crate::algorithms::{Position, SolverManager, position};
+use crate::solver_utils::*;
 
 pub fn minimax_alphabeta<P: Position + CloneBoard, S: SolverManager>(
     pos: P,
@@ -44,8 +44,7 @@ fn minimax_alphabeta_helper<P: Position + CloneBoard, S: SolverManager>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::algorithms::solve_using;
-    use crate::board::*;
+    use crate::solvers::testing::*;
 
     make_solver_tests!(solve_using(&minimax_alphabeta), BitCols, BitBoard, SymmBoard);
 

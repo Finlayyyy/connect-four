@@ -6,12 +6,11 @@ use std::ops::ControlFlow;
 use arrayvec::ArrayVec;
 use heapless::binary_heap::{BinaryHeap, Max};
 
-use crate::algorithms::move_sorter::MoveSorter;
-use crate::algorithms::{Position, SolverManager, position};
+use crate::solver_utils::*;
 use crate::basic::*;
 use crate::board::{BitBoard, Board, CloneBoard, HashBoard, MutBoard};
 
-
+const MAX_CACHE_DEPTH: usize = position::MAX_MOVES - 5;
 
 pub fn minimax_quick_avoid<S: SolverManager>(
     pos: BitBoard,
@@ -64,12 +63,17 @@ pub fn minimax_quick_avoid_helper<S: SolverManager>(
         alpha = max(alpha, score);
 
         if score >= beta { 
-            lower.insert(pos.key(), score);
+            if pos.move_count() <= MAX_CACHE_DEPTH {
+                lower.insert(pos.key(), score);
+            }
             return ControlFlow::Continue(score);
         }
     }
-
-    upper.insert(pos.key(), alpha);
+    
+    if pos.move_count() <= MAX_CACHE_DEPTH {
+        upper.insert(pos.key(), alpha);
+    }
+    
     ControlFlow::Continue(alpha)
 }
 
@@ -77,8 +81,7 @@ pub fn minimax_quick_avoid_helper<S: SolverManager>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::algorithms::solve_using;
-    use crate::board::*;
+    use crate::solvers::testing::*;
 
     make_solver_tests!(
         solve_using(&minimax_quick_avoid),

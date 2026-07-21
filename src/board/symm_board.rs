@@ -1,7 +1,7 @@
-use crate::algorithms::Position;
 use crate::basic::*;
 use crate::board::{BitCols, HashBoard};
 use crate::board::{Board, CloneBoard, MutBoard, bit_col::BitCol};
+use crate::solver_utils::Position;
 use std::hash::Hash;
 
 /// A board implementation using bit manipulation for storage with

@@ -2,8 +2,7 @@ use rand::seq::IndexedRandom;
 use std::{fs, ops::ControlFlow, sync::{Arc, atomic::{AtomicBool, Ordering}, mpsc}, thread, time::{Duration, Instant}};
 
 
-use crate::algorithms::Position;
-use crate::algorithms::solver_manager::*;
+use crate::solver_utils::*;
 use crate::basic::*;
 use crate::board::*;
 

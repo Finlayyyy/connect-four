@@ -4,10 +4,9 @@ use std::hash::Hash;
 use std::ops::ControlFlow;
 use hashbrown::HashMap;
 
-use crate::algorithms::move_sorter::MoveSorter;
 use crate::basic::*;
 use crate::board::{CloneBoard, HashBoard, MutBoard};
-use crate::algorithms::{Position, SolverManager, position};
+use crate::solver_utils::*;
 
 pub fn minimax_ordered<P: Position + CloneBoard + HashBoard, S: SolverManager>(pos: P, boss: &mut S) -> ControlFlow<S::Break, isize> {
     let mut lower = HashMap::new();
@@ -70,8 +69,7 @@ pub fn minimax_ordered_helper<P: Position + CloneBoard + HashBoard, S: SolverMan
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::algorithms::solve_using;
-    use crate::board::*;
+    use crate::solvers::testing::*;
 
     make_solver_tests!(
         solve_using(&minimax_ordered),

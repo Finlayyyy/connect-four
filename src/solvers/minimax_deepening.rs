@@ -4,11 +4,11 @@ use std::hash::Hash;
 use std::ops::ControlFlow;
 use hashbrown::HashMap;
 
-use crate::algorithms::minimax_ordered::minimax_ordered_helper;
-use crate::algorithms::minimax_avoidant::minimax_avoidant_helper;
+use crate::solvers::minimax_ordered::minimax_ordered_helper;
+use crate::solvers::minimax_avoidant::minimax_avoidant_helper;
 use crate::basic::*;
 use crate::board::{Board, CloneBoard, HashBoard, MutBoard};
-use crate::algorithms::{Position, SolverManager, position};
+use crate::solver_utils::*;
 
 pub fn minimax_deepening<P, S, F>(f: &'static F) -> (impl Fn(P, &mut S) -> ControlFlow<S::Break, isize>)
 where 
@@ -52,8 +52,7 @@ where
 #[cfg(test)]
 mod ordered_tests {
     use super::*;
-    use crate::algorithms::{minimax_quick_avoid, solve_using};
-    use crate::board::*;
+    use crate::solvers::testing::*;
 
     make_solver_tests!(
         solve_using(&minimax_deepening(&minimax_ordered_helper)),
@@ -65,8 +64,8 @@ mod ordered_tests {
 
 mod avoidant_tests {
     use super::*;
-    use crate::algorithms::{minimax_quick_avoid, solve_using};
-    use crate::board::*;
+    use crate::solvers::testing::*;
+
     make_solver_tests!(
         solve_using(&minimax_deepening(&minimax_avoidant_helper)),
         BitCols,

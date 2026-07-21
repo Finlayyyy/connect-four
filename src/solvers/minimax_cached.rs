@@ -5,7 +5,7 @@ use std::ops::ControlFlow;
 
 use crate::basic::*;
 use crate::board::{CloneBoard, HashBoard, MutBoard};
-use crate::algorithms::{Position, SolverManager, position};
+use crate::solver_utils::*;
 
 pub fn minimax_cached<P: Position + CloneBoard + HashBoard, S: SolverManager>(pos: P, boss: &mut S) -> ControlFlow<S::Break, isize> {
     let mut cache = HashMap::new();
@@ -46,8 +46,7 @@ pub fn minimax_cached_helper<P: Position + CloneBoard + HashBoard, S: SolverMana
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::algorithms::solve_using;
-    use crate::board::*;
+    use crate::solvers::testing::*;
     
     make_solver_tests!(solve_using(&minimax_cached), BitCols, BitBoard, SymmBoard);
 }

@@ -2,6 +2,7 @@ use std::ops::{Index, IndexMut};
 
 use crate::basic::*;
 use crate::board::{Board, CloneBoard, MutBoard};
+use crate::solver_utils::Position;
 
 /// MutBoard implementation using a 2D array of Option<Token>.
 /// An array of columns, where the 0th element is the bottom of the column.
@@ -68,8 +69,9 @@ mod tests {
 
 #[cfg(test)]
 mod pos_tests {
-    use crate::algorithms::WithInfo;
     use super::*;
+    use crate::solver_utils::*;
+    
     make_board_tests!(WithInfo<ArrayBoard>);
     
     make_mut_board_tests!(WithInfo<ArrayBoard>);

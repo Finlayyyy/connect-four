@@ -1,19 +1,21 @@
+use std::ops::ControlFlow;
 
-use crate::algorithms::{LaissezFaire, Position, SolverManager};
+use crate::solver_utils::*;
 use crate::basic::{Cell, Token, column, row};
 use crate::benching::{END_EASY, read_testset};
 use crate::board::{Board, CloneBoard, MutBoard};
 
+pub use crate::board::*;
+
 
 use paste;
-
 
 macro_rules! make_test_with_board_on_position {
     ($func:expr, $b:ty) => {
         paste::paste! {
             #[test]
             fn [< $b:snake >]() {
-                crate::algorithms::testing::run_easy_tests::<($b)>($func);
+                crate::solvers::testing::run_easy_tests::<($b)>($func);
             }
         }
     };
@@ -34,6 +36,16 @@ macro_rules! make_solver_tests {
             make_test_with_board_on_position!($func, $b);
         )+
     };
+}
+
+pub fn solve_using<P, F>(solver: &F) -> impl Fn(P) -> isize
+where
+    F: Fn(P, &mut LaissezFaire) -> ControlFlow<!, isize>,
+{
+    |pos| match solver(pos, &mut LaissezFaire {}) {
+        ControlFlow::Continue(score) => score,
+        ControlFlow::Break(_) => unreachable!(),
+    }
 }
 
 pub fn run_easy_tests<P: Position>(f: impl Fn(P) -> isize) {

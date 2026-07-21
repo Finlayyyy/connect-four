@@ -1,11 +1,10 @@
 use std::cmp::max;
 use std::ops::ControlFlow;
 use std::sync::atomic::{AtomicBool, Ordering};
-use crate::algorithms;
-use crate::algorithms::SolverManager;
+
+use crate::solver_utils::*;
 use crate::basic::*;
 use crate::board::{CloneBoard, MutBoard};
-use crate::algorithms::Position;
 
 
 pub fn minimax_mut<P: Position + MutBoard, S: SolverManager>(pos: P, boss: &mut S) -> ControlFlow<S::Break, isize> {
@@ -59,8 +58,7 @@ pub fn minimax_clone<P: Position + CloneBoard, S: SolverManager>(pos: P, boss: &
 #[cfg(test)]
 mod mut_tests {
     use super::*;
-    use crate::algorithms::solve_using;
-    use crate::board::*;
+    use crate::solvers::testing::*;
 
     make_solver_tests!(
         solve_using(&minimax_mut),
@@ -73,8 +71,7 @@ mod mut_tests {
 #[cfg(test)]
 mod clone_tests {
     use super::*;
-    use crate::algorithms::solve_using;
-    use crate::board::*;
+    use crate::solvers::testing::*;
 
     make_solver_tests!(
         solve_using(&minimax_clone),

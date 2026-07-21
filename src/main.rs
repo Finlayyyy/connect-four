@@ -1,16 +1,14 @@
 #![feature(step_trait, generic_const_exprs, never_type)]
 #![allow(dead_code, unused, incomplete_features)]
 
-use crate::algorithms::minimax_avoidant::minimax_avoidant_helper;
-use crate::algorithms::minimax_ordered::minimax_ordered_helper;
-use crate::algorithms::minimax_quick_avoid::minimax_quick_avoid_helper;
+use crate::solvers::minimax_avoidant::minimax_avoidant_helper;
+use crate::solvers::minimax_ordered::minimax_ordered_helper;
+use crate::solvers::minimax_quick_avoid::minimax_quick_avoid_helper;
 use crate::basic::*;
 use crate::board::*;
 use crate::benching::*;
-use crate::algorithms::*;
-
-use crate::algorithms::solver_manager::LaissezFaire;
-use crate::algorithms::solver_manager::Timeout;
+use crate::solvers::*;
+use crate::solver_utils::*;
 
 use std::ops::ControlFlow;
 use std::time::{Duration, Instant};
@@ -18,11 +16,13 @@ use std::env;
 
 use hashbrown::HashMap;
 
-mod algorithms;
+
 mod basic;
 #[macro_use]
 mod benching;
 mod board;
+mod solvers;
+mod solver_utils;
 
 fn debug_solver() {
     let moves = Moves::from_string("4614725646672422715321763");

@@ -1,4 +1,4 @@
-use crate::algorithms::Position;
+use crate::solver_utils::Position;
 use crate::basic::*;
 use crate::board::HashBoard;
 use crate::board::{Board, CloneBoard, MutBoard, bit_col::BitCol};
@@ -93,7 +93,7 @@ mod tests {
 #[cfg(test)]
 mod pos_tests {
     use super::*;
-    use crate::algorithms::WithInfo;
+    use crate::solver_utils::*;
     make_board_tests!(WithInfo<BitCols>);
     make_mut_board_tests!(WithInfo<BitCols>);
 }

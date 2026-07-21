@@ -4,6 +4,7 @@ use rand::RngExt;
 
 use crate::basic::*;
 use crate::board::{Board, CloneBoard, MutBoard};
+use crate::solver_utils::Position;
 
 /// Moves implementation using a vector of placed tokens.
 /// Stores only the moves made, reconstructing the board state as needed.
@@ -128,8 +129,9 @@ mod tests {
 
 #[cfg(test)]
 mod pos_tests {
-    use crate::algorithms::WithInfo;
     use super::*;
+    use crate::solver_utils::*;
+    
     make_board_tests!(WithInfo<Moves>);
     make_mut_board_tests!(WithInfo<Moves>);
 }

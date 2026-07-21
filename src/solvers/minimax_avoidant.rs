@@ -6,10 +6,10 @@ use std::ops::ControlFlow;
 use arrayvec::ArrayVec;
 use heapless::binary_heap::{BinaryHeap, Max};
 
-use crate::algorithms::move_sorter::MoveSorter;
-use crate::algorithms::{Position, SolverManager, position};
+
 use crate::basic::*;
 use crate::board::{Board, CloneBoard, HashBoard, MutBoard};
+use crate::solver_utils::*;
 
 pub fn minimax_avoidant<P: Position + CloneBoard + HashBoard, S: SolverManager>(
     pos: P,
@@ -147,8 +147,7 @@ pub fn minimax_avoidant_helper<P: Position + CloneBoard + HashBoard, S: SolverMa
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::algorithms::solve_using;
-    use crate::board::*;
+    use crate::solvers::testing::*;
 
     make_solver_tests!(
         solve_using(&minimax_avoidant),

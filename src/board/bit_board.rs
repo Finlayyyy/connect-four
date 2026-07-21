@@ -1,7 +1,7 @@
 use crate::basic::*;
 use crate::board::HashBoard;
 use crate::board::{Board, CloneBoard, MutBoard, bit_col::BitCol};
-use crate::algorithms::Position;
+use crate::solver_utils::Position;
 
 use std::hash::Hash;
 use std::fmt::Debug;

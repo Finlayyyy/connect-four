@@ -1,6 +1,6 @@
-use crate::algorithms::minimax_cached::minimax_cached_helper;
-use crate::algorithms::{Position, SolverManager, position};
-use crate::algorithms::minimax_ab_cached::minimax_ab_cached_helper;
+use crate::solvers::minimax_cached::minimax_cached_helper;
+use crate::solver_utils::*;
+use crate::solvers::minimax_ab_cached::minimax_ab_cached_helper;
 use crate::basic::*;
 use crate::board::{Board, CloneBoard, HashBoard};
 use hashbrown::HashMap;
@@ -126,8 +126,7 @@ fn minimax_symm_helper<P: Position + CloneBoard + HashBoard, S: SolverManager>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::algorithms::{WithInfo, solve_using};
-    use crate::board::*;
+    use crate::solvers::testing::*;
 
     make_solver_tests!(
         &solve_using(&minimax_symm),
