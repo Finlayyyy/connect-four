@@ -21,57 +21,10 @@ mod board;
 mod solver_utils;
 mod solvers;
 
-fn debug_solver() {
-    let moves = Moves::from_string("4614725646672422715321763");
-    let mut pos = WithInfo::<BitCols>::from_moves(&moves);
-    let wrong = &minimax_avoidant;
-    let right = &minimax_ordered;
-
-    let mut boss = LaissezFaire {};
-    println!(
-        "{:?} != {:?}",
-        wrong(pos.clone(), &mut boss),
-        right(pos.clone(), &mut boss)
-    );
-
-    'outer: while !pos.completed() {
-        'inner: for (col, next_pos) in pos.clone().nexts(pos.curr()) {
-            let ControlFlow::Continue(r) = right(next_pos.clone(), &mut boss);
-            let ControlFlow::Continue(w) = wrong(next_pos.clone(), &mut boss);
-            if r != w {
-                println!("[{}] {} != {}", col, w, r);
-                next_pos.display();
-                println!("");
-
-                pos = next_pos;
-                continue 'outer;
-            }
-            println!("[{}] {} == {}", col, w, r);
-        }
-        break;
-    }
-    println!("FINAL");
-
-    pos.display();
-    println!(
-        "{:?} != {:?}",
-        wrong(pos.clone(), &mut boss),
-        right(pos.clone(), &mut boss)
-    );
-    // println!("{}", pos.board().clone().to_moves().to_string());
-    println!("");
-}
-
 fn play() {
-    let tests = vec![vec![(Moves::EMPTY, 1)]];
-    let bencher = Bencher::new(tests, &["EMPTY"], Duration::from_mins(120));
-    bench!(bencher, BitBoard, minimax_quick_avoid);
-}
-
-fn little_play() {
     let moves = "444443433365666233222755555226617771";
     let moves = Moves::from_string(moves);
-    let pos = WithInfo::<BitCols>::from_moves(&moves);
+    let pos = BitBoard::from_moves(&moves);
     pos.display();
 
     let mut lower = HashMap::new(hash_map::LARGE_SIZE);
@@ -111,7 +64,8 @@ fn little_play() {
     next.display();
 }
 
-fn bench_easy() {
+fn bench_very_easy() {
+    println!("BENCH VERY EASY");
     let testsets = [END_EASY, MIDDLE_EASY];
     let tests = Bencher::read_testsets(&testsets, 100);
     let bencher = Bencher::new(tests, &testsets, Duration::from_secs(5));
@@ -122,7 +76,8 @@ fn bench_easy() {
     bench!(bencher, SymmBoard, minimax_clone);
 }
 
-fn bench_medium() {
+fn bench_easy() {
+    println!("BENCH EASY");
     let testsets = [END_EASY, MIDDLE_EASY, MIDDLE_MEDIUM];
     let tests = Bencher::read_testsets(&testsets, 100);
     let bencher = Bencher::new(tests, &testsets, Duration::from_secs(15));
@@ -147,10 +102,11 @@ fn bench_medium() {
     bench!(bencher, BitBoard, minimax_symm);
 }
 
-fn bench_hard() {
-    let testsets = [MIDDLE_MEDIUM, BEGIN_EASY, BEGIN_MEDIUM, BEGIN_HARD];
+fn bench_medium() {
+    println!("BENCH MEDIUM");
+    let testsets = [MIDDLE_MEDIUM, BEGIN_EASY];
     let tests = Bencher::read_testsets(&testsets, 100);
-    let bencher = Bencher::new(tests, &testsets, Duration::from_secs(20));
+    let bencher = Bencher::new(tests, &testsets, Duration::from_secs(30));
     bench!(bencher, BitCols, minimax_ordered);
     bench!(bencher, SymmBoard, minimax_ordered);
     println!();
@@ -161,10 +117,11 @@ fn bench_hard() {
     bench!(bencher, BitBoard, minimax_quick_avoid);
 }
 
-fn bench_extreme() {
+fn bench_hard() {
+    println!("BENCH HARD");
     let testsets = [MIDDLE_MEDIUM, BEGIN_EASY, BEGIN_MEDIUM, BEGIN_HARD];
     let tests = Bencher::read_testsets(&testsets, 100);
-    let bencher = Bencher::new(tests, &testsets, Duration::from_secs(120));
+    let bencher = Bencher::new(tests, &testsets, Duration::from_secs(60));
     bench!(
         bencher,
         BitCols,
@@ -191,11 +148,24 @@ fn bench_extreme() {
     );
 }
 
+fn bench_solve() {
+    println!("BENCH SOLVE");
+    let tests = vec![vec![(Moves::EMPTY, 1)]];
+    let bencher = Bencher::new(tests, &["SOLVE"], Duration::from_mins(30));
+    bench!(
+        bencher,
+        BitBoard,
+        "deep_quick<BitBoard>",
+        &minimax_deepening(&minimax_quick_avoid_helper)
+    );
+}
+
 fn bench() {
+    bench_very_easy();
     bench_easy();
     bench_medium();
     bench_hard();
-    bench_extreme();
+    bench_solve();
 }
 
 fn display_usage() {
@@ -211,14 +181,13 @@ fn main() {
     match args.next().map(|s| s.to_lowercase()).as_deref() {
         None => display_usage(),
         Some("--help") => display_usage(),
-        Some("debug") => debug_solver(),
         Some("-h") => display_usage(),
         Some("bench") => match args.next().map(|s| s.to_lowercase()).as_deref() {
             None => bench(),
-            Some("easy") => bench_easy(),
-            Some("medium") => bench_medium(),
-            Some("hard") => bench_hard(),
-            Some("extreme") => bench_extreme(),
+            Some("easy") => bench_very_easy(),
+            Some("medium") => bench_easy(),
+            Some("hard") => bench_medium(),
+            Some("extreme") => bench_hard(),
             Some(cmd) => {
                 println!("Unrecognised command '{}'\n", cmd);
                 display_usage();
