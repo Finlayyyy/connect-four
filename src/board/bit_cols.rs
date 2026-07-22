@@ -59,8 +59,8 @@ impl Board for BitCols {
 impl CloneBoard for BitCols {}
 
 impl MutBoard for BitCols {
-    fn unplace(&mut self, cell: Cell) {
-        self.cols[usize::from(cell.col)].force_pop();
+    fn unplace(&mut self, col: column::Idx) {
+        self.cols[usize::from(col)].force_pop();
     }
 }
 

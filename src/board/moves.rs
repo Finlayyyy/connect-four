@@ -14,7 +14,7 @@ pub struct Moves {
 }
 
 impl Moves {
-    pub fn iter(&self) -> impl Iterator<Item = &(column::Idx, Token)> {
+    pub fn iter(&self) -> std::slice::Iter<'_, (column::Idx, Token)> {
         self.moves.iter()
     }
 
@@ -88,15 +88,16 @@ impl Board for Moves {
 }
 
 impl MutBoard for Moves {
-    fn unplace(&mut self, cell: Cell) {
-        let mut col_count = 0;
-        for (i, (col, _)) in self.moves.iter().enumerate() {
-            if *col == cell.col {
-                if col_count == usize::from(cell.row) {
-                    self.moves.remove(i);
-                    return;
-                }
-                col_count += 1;
+    fn unplace(&mut self, col: column::Idx) {
+        let idx = self
+            .iter()
+            .enumerate()
+            .rev()
+            .find(|(i, (c, t))| (*c == col));
+        match idx {
+            None => (),
+            Some((i, _)) => {
+                self.moves.remove(i);
             }
         }
     }

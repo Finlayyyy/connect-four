@@ -32,12 +32,12 @@ fn minimax_mut_helper<P: Position + MutBoard, S: SolverManager>(
         };
         if pos.is_won_at(cell) {
             let score = pos.just_won_score();
-            pos.unplace(cell);
+            pos.unplace(col);
             return ControlFlow::Continue(score);
         }
 
         let score = -minimax_mut_helper(pos, boss)?;
-        pos.unplace(cell);
+        pos.unplace(col);
         best_score = max(best_score, score);
     }
 

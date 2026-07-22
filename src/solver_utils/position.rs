@@ -73,8 +73,8 @@ impl<B: Board> Board for WithInfo<B> {
 impl<B: CloneBoard> CloneBoard for WithInfo<B> {}
 
 impl<B: MutBoard> MutBoard for WithInfo<B> {
-    fn unplace(&mut self, cell: Cell) {
-        self.board.unplace(cell);
+    fn unplace(&mut self, col: column::Idx) {
+        self.board.unplace(col);
         self.curr = self.curr.prev();
         self.move_count -= 1;
     }

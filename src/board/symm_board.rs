@@ -45,8 +45,8 @@ impl Board for SymmBoard {
 impl CloneBoard for SymmBoard {}
 
 impl MutBoard for SymmBoard {
-    fn unplace(&mut self, cell: Cell) {
-        self.0.unplace(cell)
+    fn unplace(&mut self, col: column::Idx) {
+        self.0.unplace(col)
     }
 }
 

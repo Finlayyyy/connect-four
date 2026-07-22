@@ -298,7 +298,7 @@ pub trait CloneBoard: Board + Clone {
 pub trait MutBoard: Board {
     /// Removes the token at the given cell, modifying the board in place.
     /// Does not check if there is a token at the cell.
-    fn unplace(&mut self, cell: Cell);
+    fn unplace(&mut self, col: column::Idx);
 
     /// To a sequence of moves
     fn to_moves(self) -> Moves {
@@ -311,7 +311,7 @@ pub trait MutBoard: Board {
                 let Some(cell) = board.top(col) else { continue };
                 if board.get(cell).unwrap() == prev {
                     moves.push((col, prev));
-                    board.unplace(cell);
+                    board.unplace(col);
                     prev = prev.prev();
                     continue 'outer;
                 }

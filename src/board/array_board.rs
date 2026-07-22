@@ -54,7 +54,8 @@ impl Board for ArrayBoard {
 }
 
 impl MutBoard for ArrayBoard {
-    fn unplace(&mut self, cell: Cell) {
+    fn unplace(&mut self, col: column::Idx) {
+        let cell = self.top(col).unwrap();
         self[cell] = None;
     }
 }

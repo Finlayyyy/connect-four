@@ -250,8 +250,8 @@ impl Board for BitBoard {
 impl CloneBoard for BitBoard {}
 
 impl MutBoard for BitBoard {
-    fn unplace(&mut self, cell: Cell) {
-        let bit_mask = cell_mask(cell);
+    fn unplace(&mut self, col: column::Idx) {
+        let bit_mask = cell_mask(self.top(col).unwrap());
         self.mask &= !bit_mask;
         self.board &= !bit_mask;
         self.board ^= self.mask;

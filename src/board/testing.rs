@@ -130,7 +130,7 @@ pub mod mut_board_tests {
                         Cell { row, col }
                     );
                 };
-                board.unplace(cell);
+                board.unplace(col);
                 assert_eq!(
                     temp,
                     board,
