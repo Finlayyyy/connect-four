@@ -13,14 +13,9 @@ pub fn minimax_ab_cached<P: Position + CloneBoard + HashBoard, S: SolverManager>
 ) -> ControlFlow<S::Break, isize> {
     let mut lower = HashMap::new(hash_map::LARGE_SIZE);
     let mut upper = HashMap::new(hash_map::LARGE_SIZE);
-    let result = minimax_ab_cached_helper(
-        pos,
-        boss,
-        position::MIN_SCORE,
-        position::MAX_SCORE,
-        &mut lower,
-        &mut upper,
-    );
+    let alpha = pos.will_lose_score();
+    let beta = pos.will_win_score();
+    let result = minimax_ab_cached_helper(pos, boss, alpha, beta, &mut lower, &mut upper);
     result
 }
 

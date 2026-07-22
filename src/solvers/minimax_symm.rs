@@ -39,25 +39,12 @@ pub fn minimax_symm<P: Position + CloneBoard + HashBoard, S: SolverManager>(
 ) -> ControlFlow<S::Break, isize> {
     let mut lower = HashMap::new(hash_map::LARGE_SIZE);
     let mut upper = HashMap::new(hash_map::LARGE_SIZE);
+    let alpha = pos.will_lose_score();
+    let beta = pos.will_win_score();
     let result = if let Some(diffs) = make_diffs(&pos) {
-        minimax_symm_helper(
-            pos,
-            boss,
-            position::MIN_SCORE,
-            position::MAX_SCORE,
-            &mut lower,
-            &mut upper,
-            diffs,
-        )
+        minimax_symm_helper(pos, boss, alpha, beta, &mut lower, &mut upper, diffs)
     } else {
-        minimax_ab_cached_helper(
-            pos,
-            boss,
-            position::MIN_SCORE,
-            position::MAX_SCORE,
-            &mut lower,
-            &mut upper,
-        )
+        minimax_ab_cached_helper(pos, boss, alpha, beta, &mut lower, &mut upper)
     };
     result
 }
