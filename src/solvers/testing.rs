@@ -4,55 +4,41 @@ use crate::basic::{Cell, Token, column, row};
 use crate::benching::{END_EASY, read_testset};
 use crate::board::{Board, CloneBoard, MutBoard};
 use crate::solver_utils::*;
+use crate::solvers::{Solver, ABSolver};
+use paste;
 
 pub use crate::board::*;
 
-use paste;
-
-macro_rules! make_test_with_board_on_position {
-    ($func:expr, $b:ty) => {
-        paste::paste! {
-            #[test]
-            fn [< $b:snake >]() {
-                crate::solvers::testing::run_easy_tests::<($b)>($func);
-            }
-        }
-    };
-
-    ($func:expr, $name:ident, $b:ty) => {
-        paste::paste! {
-            #[test]
-            fn $name() {
-                crate::algorithms::testing::run_easy_tests::<($b)>($func);
-            }
-        }
-    };
-}
-
 macro_rules! make_solver_tests {
-    ($func:expr, $($b:ty),+) => {
+    ($solver:ty | $($pos:ty),+) => {
         $(
-            make_test_with_board_on_position!($func, $b);
+            paste::paste! {
+                #[test]
+                fn [< $pos:snake >]() {
+                    crate::solvers::testing::run_easy_tests::<$pos, $solver>(1000);
+                }
+            }
+        )+
+    };
+    ($count:expr => $solver:ty | $($pos:ty),+) => {
+        $(
+            paste::paste! {
+                #[test]
+                fn [< $pos:snake >]() {
+                    crate::solvers::testing::run_easy_tests::<$pos, $solver>($count);
+                }
+            }
         )+
     };
 }
 
-pub fn solve_using<P, F>(solver: &F) -> impl Fn(P) -> isize
-where
-    F: Fn(P, &mut LaissezFaire) -> ControlFlow<!, isize>,
-{
-    |pos| match solver(pos, &mut LaissezFaire {}) {
-        ControlFlow::Continue(score) => score,
-        ControlFlow::Break(_) => unreachable!(),
-    }
-}
+pub fn run_easy_tests<P: Position, S: Solver<P>>(count: usize) {
+    let mut boss = LaissezFaire {};
+    let mut cache = Cache::new(Cache::SMALL_SIZE);
 
-pub fn run_easy_tests<P: Position>(f: impl Fn(P) -> isize) {
-    const COUNT: usize = 300;
-
-    for (moves, score) in read_testset(END_EASY).into_iter().take(COUNT) {
+    for (moves, correct) in read_testset(END_EASY).into_iter().take(count) {
         let pos = P::from_moves(&moves);
-        let mut boss = LaissezFaire {};
-        assert_eq!(f(pos), score, "Solver failed moveset {moves}");
+        let ControlFlow::Continue(score) = S::solve(pos, &mut boss, &mut cache);
+        assert_eq!(score, correct, "Solver failed moveset {moves}");
     }
 }

@@ -6,6 +6,7 @@ use std::time::{Duration, Instant};
 use crate::basic::*;
 use crate::board::*;
 use crate::solver_utils::*;
+use crate::solvers::{Solver, ABSolver};
 
 pub const END_EASY: &str = "Test_L3_R1";
 pub const MIDDLE_EASY: &str = "Test_L2_R1";
@@ -15,16 +16,12 @@ pub const BEGIN_MEDIUM: &str = "Test_L1_R2";
 pub const BEGIN_HARD: &str = "Test_L1_R3";
 
 macro_rules! bench {
-    ($bencher:ident, $B:ty, $solver:expr) => {
-        $bencher.bench::<$B, _>(
-            &format!("{}<{}>", stringify!($solver), stringify!($B)),
-            &$solver,
+    ($bencher:ident, $B:ty, $solver:ty) => {
+        $bencher.bench::<$B, $solver>(
+            &format!("{}<{}>", stringify!($solver), stringify!($B))
         );
     };
 
-    ($bencher:ident, $B:ty, $name:expr, $solver:expr) => {
-        $bencher.bench::<$B, _>($name, &$solver);
-    };
 }
 
 pub fn read_testset(string: &str) -> Vec<(Moves, isize)> {
@@ -89,24 +86,24 @@ impl Bencher {
         }
     }
 
-    pub fn bench<P, F>(&self, name: &str, f: &F)
+    pub fn bench<P, S>(&self, name: &str)
     where
         P: Position + Send + 'static,
-        F: Fn(P, &mut Timeout<Logger>) -> ControlFlow<(), isize>,
-        F: Sync,
+        S: for<'a> Solver<P>,
     {
         print!("{:<40} |", name);
 
         for set in self.tests.iter() {
             let mut boss = Timeout::new(self.max_time, Logger::new());
             boss.start_timer();
+            let mut cache = Cache::new(Cache::LARGE_SIZE);
 
-            let durs = set
+            let (dur_len, dur_sum) = set
                 .iter()
-                .map(|(moves, score)| bench_func_on(moves, *score, f, &mut boss))
-                .map_while(|dur| dur);
+                .map(|(moves, score)| bench_func_on::<S, _, _>(&mut boss, &mut cache, moves, *score))
+                .map_while(|dur| dur)
+                .fold((0, 0), |(l, s), dur| (l + 1, s + dur));
 
-            let (dur_len, dur_sum) = durs.fold((0, 0), |(l, s), dur| (l + 1, s + dur));
             let mean_dur = dur_sum as f64 / dur_len as f64;
             let mean_count = boss.timer.inner.count() as f64 / dur_len as f64;
 
@@ -129,16 +126,16 @@ impl Drop for Bencher {
     }
 }
 
-fn bench_func_on<P, S, F>(moves: &Moves, correct: isize, f: &F, boss: &mut S) -> Option<usize>
+fn bench_func_on<S, P, M>(boss: &mut M, cache: &mut Cache, moves: &Moves, correct: isize) -> Option<usize>
 where
     P: Position,
-    S: SolverManager,
-    F: Fn(P, &mut S) -> ControlFlow<S::Break, isize>,
+    M: SolverManager,
+    S: Solver<P>
 {
     let pos = P::from_moves(moves);
 
     let start = Instant::now();
-    let ControlFlow::Continue(score) = f(pos, boss) else {
+    let ControlFlow::Continue(score) = S::solve(pos, boss, cache) else {
         return None;
     };
     let dur = start.elapsed().as_millis();

@@ -44,17 +44,17 @@ impl SolverManager for Logger {
 }
 
 #[derive(Debug)]
-pub struct WithTimeout<S> {
+pub struct WithTimeout<M> {
     timeout: Arc<AtomicBool>,
-    pub inner: S,
+    pub inner: M,
 }
 
-impl<S> WithTimeout<S> {
-    pub fn new(timeout: Arc<AtomicBool>, inner: S) -> Self {
+impl<M> WithTimeout<M> {
+    pub fn new(timeout: Arc<AtomicBool>, inner: M) -> Self {
         WithTimeout { timeout, inner }
     }
 }
-impl<S: SolverManager<Break = !>> SolverManager for WithTimeout<S> {
+impl<M: SolverManager<Break = !>> SolverManager for WithTimeout<M> {
     type Break = ();
 
     fn check(&mut self) -> ControlFlow<(), ()> {
@@ -67,13 +67,13 @@ impl<S: SolverManager<Break = !>> SolverManager for WithTimeout<S> {
 }
 
 #[derive(Debug)]
-pub struct Timeout<S> {
+pub struct Timeout<M> {
     max_time: Duration,
-    pub timer: WithTimeout<S>,
+    pub timer: WithTimeout<M>,
 }
 
-impl<S> Timeout<S> {
-    pub fn new(max_time: Duration, inner: S) -> Self {
+impl<M> Timeout<M> {
+    pub fn new(max_time: Duration, inner: M) -> Self {
         let timeout = Arc::new(AtomicBool::new(false));
         Timeout {
             max_time,
@@ -90,7 +90,7 @@ impl<S> Timeout<S> {
         });
     }
 }
-impl<S: SolverManager<Break = !>> SolverManager for Timeout<S> {
+impl<M: SolverManager<Break = !>> SolverManager for Timeout<M> {
     type Break = ();
 
     fn check(&mut self) -> ControlFlow<(), ()> {

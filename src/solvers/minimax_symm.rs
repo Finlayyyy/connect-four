@@ -3,10 +3,11 @@ use std::iter::once;
 use crate::basic::*;
 use crate::board::{Board, CloneBoard, HashBoard};
 use crate::solver_utils::*;
-use crate::solvers::minimax_ab_cached::minimax_ab_cached_helper;
-use crate::solvers::minimax_cached::minimax_cached_helper;
+use crate::solvers::minimax_ab_cached::MinimaxABCached;
+use crate::solvers::{ABSolver, Solver};
 
 use std::cmp::{max, min};
+use std::hash::Hash;
 use std::ops::ControlFlow;
 
 /// Type to store the difference in height of each column with its reflection,
@@ -35,20 +36,59 @@ fn make_diffs<B: Board>(board: &B) -> Option<SymmDiff> {
     Some(diffs)
 }
 
-pub fn minimax_symm<P: Position + CloneBoard + HashBoard, S: SolverManager>(
-    pos: P,
-    boss: &mut S,
-) -> ControlFlow<S::Break, isize> {
-    let mut lower = HashMap::new(hash_map::LARGE_SIZE);
-    let mut upper = HashMap::new(hash_map::LARGE_SIZE);
-    let alpha = pos.will_lose_score();
-    let beta = pos.will_win_score();
-    let result = if let Some(diffs) = make_diffs(&pos) {
-        minimax_symm_helper(pos, boss, alpha, beta, &mut lower, &mut upper, diffs)
-    } else {
-        minimax_ab_cached_helper(pos, boss, alpha, beta, &mut lower, &mut upper)
-    };
-    result
+pub struct MinimaxSymm { }
+
+impl MinimaxSymm {
+    fn minimax<P: Position + CloneBoard + HashBoard, M: SolverManager>(
+        pos: P,
+        boss: &mut M,
+        cache: &mut Cache,
+        mut alpha: isize,
+        mut beta: isize,
+        diffs: SymmDiff,
+    ) -> ControlFlow<M::Break, isize> {
+        boss.check()?;
+        if pos.completed() { return ControlFlow::Continue(0); }
+
+        beta = min(beta, pos.will_win_score());
+        (alpha, beta) = cache.check(&pos, alpha, beta);
+        if alpha >= beta { return ControlFlow::Continue(beta); }
+
+        let lower = alpha;
+        let mut best = isize::MIN;
+        for (diffs, col, next_pos) in next_boards(&pos, diffs) {
+            if next_pos.is_won_at_col(col) {
+                best = next_pos.just_won_score();
+                break;
+            }
+
+            let score = -match diffs {
+                None => MinimaxABCached::minimax(next_pos, boss, cache, -beta, -alpha)?,
+                Some(diffs) => Self::minimax(next_pos, boss, cache, -beta, -alpha, diffs)?,
+            };
+            best = max(best, score);
+            alpha = max(alpha, score);
+            if alpha >= beta { break; }
+        }
+
+        cache.check_insert(&pos, lower, best, beta);
+        ControlFlow::Continue(best)
+    }
+}
+
+impl<P: Position + CloneBoard + HashBoard> Solver<P> for MinimaxSymm {
+    fn solve<M: SolverManager>(
+        pos: P,
+        boss: &mut M,
+        cache: &mut Cache,
+    ) -> ControlFlow<M::Break, isize> {
+        let alpha = pos.will_lose_score();
+        let beta = pos.will_win_score();
+        match make_diffs(&pos) {
+            None => MinimaxABCached::solve(pos, boss, cache),
+            Some(diffs) => Self::minimax(pos, boss, cache, alpha, beta, diffs),
+        }
+    }
 }
 
 /// Updates the given diff considering the token from the prev move.
@@ -83,7 +123,9 @@ fn next_boards<P: Position + CloneBoard>(
     diffs: SymmDiff,
 ) -> Vec<(Option<SymmDiff>, column::Idx, P)> {
     match diffs {
-        [0, 0, 0] => column::LEFT_SIDE.into_iter().chain(once(column::Idx::CENTRE))
+        [0, 0, 0] => column::LEFT_SIDE
+            .into_iter()
+            .chain(once(column::Idx::CENTRE))
             .filter_map(|col| {
                 let pos = pos.placed(col, pos.curr())?;
                 Some((col, pos))
@@ -97,57 +139,10 @@ fn next_boards<P: Position + CloneBoard>(
     }
 }
 
-fn minimax_symm_helper<P: Position + CloneBoard + HashBoard, S: SolverManager>(
-    pos: P,
-    boss: &mut S,
-    mut alpha: isize,
-    mut beta: isize,
-    lower: &mut HashMap,
-    upper: &mut HashMap,
-    diffs: SymmDiff,
-) -> ControlFlow<S::Break, isize> {
-    boss.check()?;
-    if pos.completed() {
-        return ControlFlow::Continue(0);
-    };
-
-    beta = min(beta, pos.will_win_score());
-    if let Some(min) = lower.get(&pos) {
-        alpha = max(alpha, min)
-    };
-    if let Some(max) = upper.get(&pos) {
-        beta = min(beta, max)
-    };
-    if alpha >= beta {
-        return ControlFlow::Continue(beta);
-    };
-
-    for (diffs, col, next_pos) in next_boards(&pos, diffs) {
-        if next_pos.is_won_at_col(col) {
-            alpha = next_pos.just_won_score();
-            break;
-        }
-
-        let score = -match diffs {
-            None => minimax_ab_cached_helper(next_pos, boss, -beta, -alpha, lower, upper)?,
-            Some(diffs) => minimax_symm_helper(next_pos, boss, -beta, -alpha, lower, upper, diffs)?,
-        };
-
-        if score >= beta {
-            lower.insert(&pos, score);
-            return ControlFlow::Continue(score);
-        }
-        alpha = max(alpha, score);
-    }
-
-    upper.insert(&pos, alpha);
-    ControlFlow::Continue(alpha)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::solvers::testing::*;
 
-    make_solver_tests!(&solve_using(&minimax_symm), BitCols, SymmBoard, BitBoard);
+    make_solver_tests!(MinimaxSymm | BitCols, SymmBoard, BitBoard);
 }

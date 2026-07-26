@@ -68,7 +68,7 @@ impl HashBoard for BitCols {
     fn key(&self) -> u64 {
         let mut k = 0;
         for (i, col) in self.cols.iter().enumerate() {
-            k |= col.to_u64() << (i * 8);
+            k |= col.to_u64() << (i * 7);
         }
         k
     }

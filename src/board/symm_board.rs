@@ -56,11 +56,11 @@ impl HashBoard for SymmBoard {
 
         let mut left = 0;
         for col in column::LEFT_SIDE {
-            left = self.get_col(col).to_u64() | (left << 8);
+            left = self.get_col(col).to_u64() | (left << 7);
         }
         let mut right = 0;
         for col in column::RIGHT_SIDE.into_iter().rev() {
-            right = self.get_col(col).to_u64() | (right << 8);
+            right = self.get_col(col).to_u64() | (right << 7);
         }
 
         let (left, right) = if left <= right {
@@ -69,7 +69,7 @@ impl HashBoard for SymmBoard {
             (right, left)
         };
 
-        left | (centre << (3 * 8)) | (right << (4 * 8))
+        left | (centre << (3 * 7)) | (right << (4 * 7))
     }
 }
 
