@@ -49,16 +49,15 @@ impl MinimaxSymm {
     ) -> ControlFlow<M::Break, isize> {
         boss.check()?;
         if pos.completed() { return ControlFlow::Continue(0); }
+        let prev_alpha = alpha;
 
         beta = min(beta, pos.will_win_score());
         (alpha, beta) = cache.check(&pos, alpha, beta);
         if alpha >= beta { return ControlFlow::Continue(beta); }
 
-        let lower = alpha;
-        let mut best = isize::MIN;
         for (diffs, col, next_pos) in next_boards(&pos, diffs) {
             if next_pos.is_won_at_col(col) {
-                best = next_pos.just_won_score();
+                alpha = next_pos.just_won_score();
                 break;
             }
 
@@ -66,13 +65,12 @@ impl MinimaxSymm {
                 None => MinimaxABCached::minimax(next_pos, boss, cache, -beta, -alpha)?,
                 Some(diffs) => Self::minimax(next_pos, boss, cache, -beta, -alpha, diffs)?,
             };
-            best = max(best, score);
             alpha = max(alpha, score);
             if alpha >= beta { break; }
         }
 
-        cache.check_insert(&pos, lower, best, beta);
-        ControlFlow::Continue(best)
+        cache.check_insert(&pos, prev_alpha, alpha, beta);
+        ControlFlow::Continue(alpha)
     }
 }
 

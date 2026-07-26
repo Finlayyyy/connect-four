@@ -74,6 +74,7 @@ impl Entry {
     }
 
     pub fn is_superior_to(&self, other: Entry) -> bool {
+        return true;
         let Some((kind, key, score, depth)) = self.unpack() else {
             return false; // An empty entry is not superior
         };

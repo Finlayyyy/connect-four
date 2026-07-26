@@ -18,6 +18,7 @@ impl<P: Position + CloneBoard + HashBoard> ABSolver<P> for MinimaxOrdered {
     ) -> ControlFlow<M::Break, isize> {
         boss.check()?;
         if pos.completed() { return ControlFlow::Continue(0); }
+        let prev_alpha = alpha;
 
         (alpha, beta) = cache.check(&pos, alpha, beta);
         if alpha >= beta { return ControlFlow::Continue(beta); }
@@ -41,17 +42,14 @@ impl<P: Position + CloneBoard + HashBoard> ABSolver<P> for MinimaxOrdered {
         beta = min(beta, pos.will_win_score() - 1);
         if alpha >= beta { return ControlFlow::Continue(beta); }
 
-        let lower = alpha;
-        let mut best = isize::MIN;
         for (col, next_pos) in moves {
             let score = -Self::minimax(next_pos, boss, cache, -beta, -alpha)?;
-            best = max(best, score);
             alpha = max(alpha, score);
             if alpha >= beta { break; }
         }
 
-        cache.check_insert(&pos, lower, best, beta);
-        ControlFlow::Continue(best)
+        cache.check_insert(&pos, prev_alpha, alpha, beta);
+        ControlFlow::Continue(alpha)
     }
 }
 

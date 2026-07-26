@@ -44,13 +44,11 @@ pub trait Position: Board {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct WithInfo<B> {
     board: B,
-    curr: Token,
     move_count: usize,
 }
 impl<B: Board> Board for WithInfo<B> {
     const EMPTY: Self = WithInfo {
         board: B::EMPTY,
-        curr: Token::STARTING,
         move_count: 0,
     };
 
@@ -65,7 +63,6 @@ impl<B: Board> Board for WithInfo<B> {
     fn force_place(&mut self, col: column::Idx, token: Token) {
         debug_assert!(self.can_place(col));
         self.board.force_place(col, token);
-        self.curr = self.curr.next();
         self.move_count += 1;
     }
 }
@@ -75,7 +72,6 @@ impl<B: CloneBoard> CloneBoard for WithInfo<B> {}
 impl<B: MutBoard> MutBoard for WithInfo<B> {
     fn unplace(&mut self, col: column::Idx) {
         self.board.unplace(col);
-        self.curr = self.curr.prev();
         self.move_count -= 1;
     }
 }
@@ -91,6 +87,10 @@ impl<B: Board> Position for WithInfo<B> {
         self.move_count
     }
     fn curr(&self) -> Token {
-        self.curr
+        match self.move_count % 2 {
+            0 => Token::STARTING,
+            1 => Token::SECOND,
+            _ => unreachable!()
+        }
     }
 }

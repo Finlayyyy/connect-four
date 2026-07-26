@@ -28,23 +28,21 @@ impl ABSolver<BitBoard> for MinimaxQuick {
             .map(|(col, next_board)| (next_board.heuristic(), col))
             .collect();
 
+        let prev_alpha = alpha;
         alpha = max(alpha, pos.will_lose_score() + 1);
         beta = min(beta, pos.will_win_score() - 1);
         (alpha, beta) = cache.check(&pos, alpha, beta);
         if alpha >= beta {return ControlFlow::Continue(beta); }
 
-        let lower = alpha;
-        let mut best = isize::MIN;
         for col in moves {
             let next_pos = pos.placed_curr_unchecked(col);
             let score = -Self::minimax(next_pos, boss, cache, -beta, -alpha)?;
-            best = max(best, score);
             alpha = max(alpha, score);
             if alpha >= beta { break; }
         }
 
-        cache.check_insert(&pos, lower, best, beta);
-        ControlFlow::Continue(best)
+        cache.check_insert(&pos, prev_alpha, alpha, beta);
+        ControlFlow::Continue(alpha)
     }
 }
 

@@ -28,7 +28,7 @@ where
 
         boss.check()?;
         let mut min = pos.will_lose_score();
-        let mut max = pos.will_win_score();
+        let mut max = pos.will_win_score() - 1;
 
         while min < max {
             let mut mid = min + (max - min) / 2;
