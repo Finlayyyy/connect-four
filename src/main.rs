@@ -1,4 +1,4 @@
-#![feature(step_trait, generic_const_exprs, never_type)]
+#![feature(generic_const_exprs, never_type)]
 #![allow(dead_code, unused, incomplete_features)]
 
 use crate::basic::*;

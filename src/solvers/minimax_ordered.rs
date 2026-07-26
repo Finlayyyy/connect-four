@@ -44,7 +44,7 @@ pub fn minimax_ordered_helper<P: Position + CloneBoard + HashBoard, S: SolverMan
 
     for (col, next_pos) in pos.nexts(pos.curr()) {
         let cell = next_pos.top(col).unwrap();
-        match next_pos.count_adjacent_at(cell, pos.curr()) {
+        match next_pos.count_adjacent_around(cell, pos.curr()) {
             // found a win
             None => {
                 let score = next_pos.just_won_score();

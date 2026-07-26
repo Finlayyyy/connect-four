@@ -1,10 +1,7 @@
 use crate::basic::*;
 
 use rand::RngExt;
-use std::{
-    fmt::{Debug, Display},
-    num::IntErrorKind::Empty,
-};
+use std::fmt::{Debug, Display};
 
 #[macro_use]
 pub mod testing;
@@ -46,7 +43,7 @@ pub trait Board: Debug + Sized + Eq {
     fn count_moves(&self) -> usize {
         let mut count = 0;
         for row in row::BOTTOM_UP {
-            for col in column::LEFT..=column::RIGHT {
+            for col in column::COLUMNS {
                 let cell = Cell { col, row };
                 match self.get(cell) {
                     Some(_) => count += 1,
@@ -109,43 +106,36 @@ pub trait Board: Debug + Sized + Eq {
 
     /// For a given column and token,
     /// calculate the length of same-colour tokens in each (relevant) direction
-    /// (left, right, down, left-down, right-down) if that token *were* placed in that column.
-    /// Returns None if a win is found (a row of four), else
+    /// (left, right, down, left-down, right-down) if that token *were* placed in that cell.
+    /// Returns `None` if a win is found (a row of four), else
     /// Some((count of adjacent pairs, count of adjacent triples))
-    fn count_adjacent_at(&self, cell: Cell, token: Token) -> Option<(usize, usize)> {
-        let count_line = |dir: (isize, isize)| {
-            for d in 1..=3 {
-                match cell.try_shift((d * dir.0, d * dir.1)) {
-                    Some(next) if self.get(next) == Some(token) => continue,
-                    _ => return d as usize,
-                }
-            }
-            return 4;
+    fn count_adjacent_around(&self, cell: Cell, token: Token) -> Option<(usize, usize)> {
+        let count = |dir| {
+            cell.nbhd_in(dir)
+                .take_while(|&(_, other)| self.get(other) == Some(token))
+                .last()
+                .unwrap_or((0, cell))
+                .0
+                + 1
         };
 
         let mut pairs = 0;
         let mut triples = 0;
-        let mut consider_count = |count| match count {
+        let mut consider = |count| match count {
             0 => unreachable!(),
             1 => Some(()),
-            2 => {
-                pairs += 1;
-                Some(())
-            }
-            3 => {
-                triples += 1;
-                Some(())
-            }
+            2 => { pairs += 1; Some(()) }
+            3 => { triples += 1; Some(()) }
             4.. => None,
         };
-        // horizontal = left + right
-        consider_count(count_line((-1, 0)) + count_line((1, 0)) - 1)?;
+        // horizontal = left + right - 1
+        consider(count(Dir::Left) + count(Dir::Right) - 1)?;
         // vertical = down
-        consider_count(count_line((0, -1)))?;
-        // diag_pos = left-down + right-up
-        consider_count(count_line((-1, -1)) + count_line((1, 1)) - 1)?;
-        // diag_neg = right-down + left-up
-        consider_count(count_line((1, -1)) + count_line((-1, 1)) - 1)?;
+        consider(count(Dir::Down))?;
+        // diag_pos = left-down + right-up - 1
+        consider(count(Dir::LeftDown) + count(Dir::RightUp) - 1)?;
+        // diag_neg = right-down + left-up - 1
+        consider(count(Dir::RightDown) + count(Dir::LeftUp) - 1)?;
         Some((pairs, triples))
     }
 
@@ -154,26 +144,12 @@ pub trait Board: Debug + Sized + Eq {
     /// Panics if the column is empty.
     fn is_won_at(&self, cell: Cell) -> bool {
         let token = self.get(cell).unwrap();
-
-        self.count_adjacent_at(cell, token).is_none()
+        self.count_adjacent_around(cell, token).is_none()
     }
 
     fn is_won_at_col(&self, col: column::Idx) -> bool {
         let cell = self.top(col).unwrap();
         self.is_won_at(cell)
-    }
-
-    fn is_won(&self, token: Token) -> bool {
-        for col in column::LEFT..=column::RIGHT {
-            let Some(top) = self.top(col) else { continue };
-            for row in (row::Idx::BOTTOM..=top.row) {
-                let cell = Cell { row, col };
-                if self.get(cell).unwrap() == token && self.is_won_at(cell) {
-                    return true;
-                }
-            }
-        }
-        false
     }
 
     /// String pretty display
@@ -182,7 +158,7 @@ pub trait Board: Debug + Sized + Eq {
 
         for &row in row::BOTTOM_UP.iter().rev() {
             string.push('|');
-            for col in column::LEFT..=column::RIGHT {
+            for col in column::COLUMNS {
                 let cell = Cell { col, row };
                 match self.get(cell) {
                     Some(Token::B) => string.push('O'),
@@ -275,16 +251,16 @@ pub trait CloneBoard: Board + Clone {
     }
 
     fn can_win(&self, token: Token) -> bool {
-        self.nexts(token).any(|(col, board)| board.is_won(token))
+        self.nexts(token).any(|(col, board)| board.is_won_at_col(col))
     }
 
-    // Horizontal reflection by copying each cell to its reflected position
-    fn reflected(&self) -> Self {
+    // Horizontal reflection by copying each cell to its mirrored position
+    fn mirrored(&self) -> Self {
         let mut board = Self::EMPTY;
-        for col in column::LEFT..=column::RIGHT {
+        for col in column::COLUMNS {
             for row in row::BOTTOM_UP {
                 if let Some(token) = self.get(Cell { col, row }) {
-                    board.place(col.reflected(), token);
+                    board.place(col.mirrored(), token);
                 }
             }
         }
@@ -307,7 +283,7 @@ pub trait MutBoard: Board {
         let mut moves = vec![];
         let mut prev = board.calc_curr().prev();
         'outer: while !board.is_empty() {
-            for col in column::LEFT..=column::RIGHT {
+            for col in column::COLUMNS {
                 let Some(cell) = board.top(col) else { continue };
                 if board.get(cell).unwrap() == prev {
                     moves.push((col, prev));

@@ -52,15 +52,15 @@ impl MutBoard for SymmBoard {
 
 impl HashBoard for SymmBoard {
     fn key(&self) -> u64 {
-        let centre = self.get_col(column::CENTRE).to_u64();
+        let centre = self.get_col(column::Idx::CENTRE).to_u64();
 
         let mut left = 0;
-        for col in column::LEFT..column::CENTRE {
+        for col in column::LEFT_SIDE {
             left = self.get_col(col).to_u64() | (left << 8);
         }
         let mut right = 0;
-        for col in column::LEFT..column::CENTRE {
-            right = self.get_col(col.reflected()).to_u64() | (right << 8);
+        for col in column::RIGHT_SIDE.into_iter().rev() {
+            right = self.get_col(col).to_u64() | (right << 8);
         }
 
         let (left, right) = if left <= right {
@@ -112,9 +112,9 @@ mod tests {
         let mut board_b = SymmBoard::EMPTY;
         let mut token = Token::STARTING;
         for _ in row::BOTTOM_UP {
-            for col in column::LEFT..=column::RIGHT {
+            for col in column::COLUMNS {
                 board_a.place(col, token).unwrap();
-                board_b.place(col.reflected(), token).unwrap();
+                board_b.place(col.mirrored(), token).unwrap();
 
                 assert_eq!(board_a, board_b, "Symmetric SymmBoards are not equal");
                 assert_eq!(

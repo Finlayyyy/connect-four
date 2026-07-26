@@ -5,4 +5,6 @@ Todo:
 - make testsets static
 - make solver trait 
 - check hash table statistical distribution
-- fix symmboard
+- fix symmsolver
+- inline
+- openings
