@@ -81,10 +81,8 @@ impl Entry {
             return true; // Non-empty is superior to empty
         };
 
-        if key == other_key {
-            return true;
-        }
-        (depth < other_depth + 2)
+        if key == other_key { true }
+        else { (depth < other_depth + 4) }
     }
 }
 
@@ -117,9 +115,7 @@ impl Cache {
 
     /// MIN_SCORE <= score <= MAX_SCORE
     pub fn insert<B: HashBoard + Position>(&mut self, kind: EntryKind, board: &B, score: isize) {
-        if board.move_count() > Self::MAX_CACHE_DEPTH {
-            return;
-        }
+        if board.move_count() > Self::MAX_CACHE_DEPTH { return; }
 
         let key = board.key();
         let depth = board.move_count();
