@@ -103,10 +103,15 @@ fn bench() {
     bench_hard();
 }
 
+fn generate() {
+    todo!()
+}
+
 fn display_usage() {
     println!("usage:               \n");
     println!("       ConnectFour [-h | --help] \n");
     println!("       ConnectFour bench       \n");
+    println!("       ConnectFour generate    \n");
     println!("       ConnectFour help        \n");
     println!("       ConnectFour play        \n");
 }
@@ -128,6 +133,7 @@ fn main() {
                 display_usage();
             }
         },
+        Some("generate") => generate(),
         Some("help") => display_usage(),
         Some("play") => play(),
         Some(cmd) => {

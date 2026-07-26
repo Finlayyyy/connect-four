@@ -8,3 +8,5 @@ Todo:
 - fix symmsolver
 - inline
 - openings
+- Make Cache generic over board
+- make bitboard hash symmetrically
