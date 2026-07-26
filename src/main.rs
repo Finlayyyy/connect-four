@@ -29,7 +29,7 @@ fn bench_very_easy() {
     println!("BENCH VERY EASY");
     let testsets = [END_EASY, MIDDLE_EASY];
     let tests = Bencher::read_testsets(&testsets, 100);
-    let bencher = Bencher::new(tests, &testsets, Duration::from_secs(5));
+    let bencher = Bencher::new(tests, &testsets, Duration::from_secs(1));
     bench!(bencher, WithInfo<ArrayBoard>, MinimaxMut);
     bench!(bencher, BitCols, MinimaxMut);
     bench!(bencher, BitCols, MinimaxClone);
@@ -41,7 +41,7 @@ fn bench_easy() {
     println!("BENCH EASY");
     let testsets = [END_EASY, MIDDLE_EASY, MIDDLE_MEDIUM];
     let tests = Bencher::read_testsets(&testsets, 100);
-    let bencher = Bencher::new(tests, &testsets, Duration::from_secs(15));
+    let bencher = Bencher::new(tests, &testsets, Duration::from_secs(5));
     bench!(bencher, BitCols, MinimaxAlphaBeta);
     bench!(bencher, WithInfo<BitCols>, MinimaxAlphaBeta);
     println!();
@@ -67,7 +67,7 @@ fn bench_medium() {
     println!("BENCH MEDIUM");
     let testsets = [MIDDLE_MEDIUM, BEGIN_EASY];
     let tests = Bencher::read_testsets(&testsets, 100);
-    let bencher = Bencher::new(tests, &testsets, Duration::from_secs(30));
+    let bencher = Bencher::new(tests, &testsets, Duration::from_secs(15));
     bench!(bencher, BitCols, MinimaxOrdered);
     bench!(bencher, SymmBoard, MinimaxOrdered);
     println!();
@@ -82,7 +82,7 @@ fn bench_hard() {
     println!("BENCH HARD");
     let testsets = [MIDDLE_MEDIUM, BEGIN_EASY, BEGIN_MEDIUM, BEGIN_HARD];
     let tests = Bencher::read_testsets(&testsets, 100);
-    let bencher = Bencher::new(tests, &testsets, Duration::from_secs(60));
+    let bencher = Bencher::new(tests, &testsets, Duration::from_secs(30));
     bench!(bencher, BitCols, Deepening<MinimaxOrdered>);
     bench!(bencher, BitCols, Deepening<MinimaxAvoidant>);
     bench!(bencher, SymmBoard, Deepening<MinimaxAvoidant>);
@@ -92,7 +92,7 @@ fn bench_hard() {
 fn bench_solve() {
     println!("BENCH SOLVE");
     let tests = vec![vec![(Moves::EMPTY, 1)]];
-    let bencher = Bencher::new(tests, &["SOLVE"], Duration::from_mins(30));
+    let bencher = Bencher::new(tests, &["SOLVE"], Duration::from_mins(60));
     bench!(bencher, BitBoard, Deepening<MinimaxQuick>);
 }
 

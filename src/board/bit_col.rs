@@ -1,5 +1,3 @@
-use std::ops::Index;
-
 use crate::basic::*;
 
 fn token_to_u8(token: Token) -> u8 {
@@ -31,6 +29,7 @@ impl BitCol {
 
     /// Counts the number of tokens in the column.
     /// Also the bit index of the leading one.
+    #[inline(always)]
     pub fn count(&self) -> usize {
         7 - self.0.leading_zeros() as usize
     }

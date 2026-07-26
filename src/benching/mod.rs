@@ -1,12 +1,12 @@
-use rand::seq::IndexedRandom;
+
 use std::fs;
 use std::ops::ControlFlow;
 use std::time::{Duration, Instant};
 
-use crate::basic::*;
+
 use crate::board::*;
 use crate::solver_utils::*;
-use crate::solvers::{Solver, ABSolver};
+use crate::solvers::Solver;
 
 pub const END_EASY: &str = "Test_L3_R1";
 pub const MIDDLE_EASY: &str = "Test_L2_R1";
@@ -15,15 +15,18 @@ pub const BEGIN_EASY: &str = "Test_L1_R1";
 pub const BEGIN_MEDIUM: &str = "Test_L1_R2";
 pub const BEGIN_HARD: &str = "Test_L1_R3";
 
+/// Use the bencher to bench the given combination
+/// of board and solver
 macro_rules! bench {
     ($bencher:ident, $B:ty, $solver:ty) => {
         $bencher.bench::<$B, $solver>(
-            &format!("{}<{}>", stringify!($solver), stringify!($B))
+            &format!("{}/{}", stringify!($solver), stringify!($B))
         );
     };
 
 }
 
+/// Read the given testset from disk
 pub fn read_testset(string: &str) -> Vec<(Moves, isize)> {
     let contents = fs::read_to_string(format!("src/benching/positions/{}", string))
         .expect(format!("Could not read file: {}", string).as_str());
@@ -52,11 +55,11 @@ pub fn read_testset(string: &str) -> Vec<(Moves, isize)> {
 
 pub struct Bencher {
     tests: Vec<Vec<(Moves, isize)>>,
-    names: Vec<String>,
     max_time: Duration,
 }
 
 impl Bencher {
+    /// Read `count` elements out of each testset
     pub fn read_testsets(testsets: &[&str], count: usize) -> Vec<Vec<(Moves, isize)>> {
         testsets
             .iter()
@@ -64,6 +67,7 @@ impl Bencher {
             .collect()
     }
 
+    /// Create a new bencher with given tests, names and max_duration per testset
     pub fn new(tests: Vec<Vec<(Moves, isize)>>, names: &[&str], max_time: Duration) -> Self {
         assert_eq!(tests.len(), names.len());
         print!(
@@ -81,11 +85,11 @@ impl Bencher {
         println!("");
         Bencher {
             tests,
-            names: names.iter().map(|&s| s.to_owned()).collect(),
             max_time,
         }
     }
 
+    /// Bench the given combination of Board and Solver
     pub fn bench<P, S>(&self, name: &str)
     where
         P: Position + Send + 'static,
@@ -118,7 +122,7 @@ impl Bencher {
 
 impl Drop for Bencher {
     fn drop(&mut self) {
-        print!("                               |");
+        print!("                                         |");
         for _ in &self.tests {
             print!("-------------|");
         }
@@ -126,6 +130,9 @@ impl Drop for Bencher {
     }
 }
 
+/// Runs the given solver on the given position with the
+/// boss and cache. Returns `None` if the solver does not finish,
+/// otherwise the number of milliseconds the solver ran for.
 fn bench_func_on<S, P, M>(boss: &mut M, cache: &mut Cache, moves: &Moves, correct: isize) -> Option<usize>
 where
     P: Position,

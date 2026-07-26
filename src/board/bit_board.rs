@@ -4,7 +4,6 @@ use crate::board::{Board, CloneBoard, MutBoard, bit_col::BitCol};
 use crate::solver_utils::Position;
 
 use std::fmt::Debug;
-use std::hash::Hash;
 
 //   6 13 20 27 34 41 48
 //  ---------------------
@@ -15,14 +14,22 @@ use std::hash::Hash;
 // | 1  8 15 22 29 36 43 |
 // | 0  7 14 21 28 35 42 |
 //  ---------------------
+/// A fast BitBoard implementation.
+/// Stores two bitmaps
+/// - board: bitmap of the current player's tokens
+/// - mask: bitmap of placed tokens
+///
+/// Allows for fast querying, hashing and win checks.
 #[derive(Clone, PartialEq, Eq)]
 pub struct BitBoard {
     board: u64,
     mask: u64,
 }
 
+/// Width of the board
 const WIDTH: u64 = column::COUNT as u64;
 
+/// Bitmask of the bottom row
 const BOTTOM_MASK: u64 = {
     let mut mask: u64 = 0;
     let mut i = 0;
@@ -33,30 +40,46 @@ const BOTTOM_MASK: u64 = {
     mask
 };
 
+/// Bitmask of the additional row above
 const ABOVE_MASK: u64 = BOTTOM_MASK << 6;
+
+/// Bitmask of every valid board position
 const BOARD_MASK: u64 = ((1 << (WIDTH * WIDTH - 1)) - 1) & (!ABOVE_MASK);
 
+/// Bitmask of the given row
+#[inline(always)]
 const fn row_mask(row: row::Idx) -> u64 {
     BOTTOM_MASK << row.to_u64()
 }
 
+/// Bitmask of the cell at the bottom of the given cell
+#[inline(always)]
 const fn bottom_col_mask(col: column::Idx) -> u64 {
     1 << (WIDTH * col.to_u64())
 }
 
+/// Bitmask of the given column
+#[inline(always)]
 const fn col_mask(col: column::Idx) -> u64 {
     0b111111 << (WIDTH * col.to_u64())
 }
 
+/// Bitmask fo the given cell
+#[inline(always)]
 const fn cell_mask(cell: Cell) -> u64 {
     (1 << cell.row.to_u64()) << (WIDTH * cell.col.to_u64())
 }
 
 impl BitBoard {
+    /// Bitmask with a 1 at the cell of every valid move
+    #[inline(always)]
     fn possible_mask(&self) -> u64 {
         (self.mask + BOTTOM_MASK) & BOARD_MASK
     }
 
+    /// Place the current player's token at the given column,
+    /// without checking if it is not full.
+    #[inline(always)]
     pub fn placed_curr_unchecked(&self, col: column::Idx) -> Self {
         BitBoard {
             board: self.board ^ self.mask,
@@ -64,13 +87,18 @@ impl BitBoard {
         }
     }
 
+    /// Bitmask with a 1 at every cell that would result
+    /// in a win for the current player
     fn curr_win_mask(&self) -> u64 {
         Self::win_mask(self.board, self.mask)
     }
+    /// Bitmask with a 1 at every cell that would result
+    /// in a win for the opponent
     fn opp_win_mask(&self) -> u64 {
         Self::win_mask(self.board ^ self.mask, self.mask)
     }
 
+    /// Bitmask of all current winning moves
     fn win_mask(board: u64, mask: u64) -> u64 {
         // Vertical
         let mut r = (board << 1) & (board << 2) & (board << 3);
@@ -102,13 +130,19 @@ impl BitBoard {
         r & (BOARD_MASK ^ mask)
     }
 
+    /// Count of possible wins for the current player
     pub fn curr_win_count(&self) -> u32 {
         (self.possible_mask() & self.curr_win_mask()).count_ones()
     }
+    /// Can the current player win on their next move
     pub fn curr_can_win(&self) -> bool {
         self.curr_win_count() > 0
     }
 
+    /// Bitmask of every possible move that doesn't
+    /// allow the opponent to win in their next move
+    /// Returns `Err(())` if there are none, otherwise
+    /// `Ok(mask)`
     fn possible_nonlosing_mask(&self) -> Result<u64, ()> {
         let possible = self.possible_mask();
         let opp_win = self.opp_win_mask();
@@ -131,18 +165,23 @@ impl BitBoard {
         Ok(mask)
     }
 
+    /// Returns an iterator over the resulting board
+    /// for every move that doesn't allow the opponent to win
+    /// in their next move. Returns `Err(())` if there are none
+    /// (i.e. the current player will lose), otherwise `Result(nexts)`
     pub fn possible_nonlosing_nexts(
         &self,
     ) -> Result<impl Iterator<Item = (column::Idx, Self)>, ()> {
         let mask = self.possible_nonlosing_mask()?;
-        Result::Ok(column::CENTRED.iter().filter_map(move |&col| {
-            match ((col_mask(col) & mask) > 0) {
+        Ok(column::CENTRED.iter().filter_map(move |&col| {
+            match (col_mask(col) & mask) > 0 {
                 true => Some((col, self.placed(col, self.curr()).unwrap())),
                 false => None,
             }
         }))
     }
 
+    /// Is the board already won?
     fn is_won(board: u64) -> bool {
         // Horizontal
         let m = board & (board >> WIDTH);
@@ -171,6 +210,7 @@ impl BitBoard {
         false
     }
 
+    /// Heuristic to order move exploration
     pub fn heuristic(&self) -> u32 {
         self.curr_win_mask().count_ones()
     }
@@ -179,10 +219,12 @@ impl BitBoard {
 impl Board for BitBoard {
     const EMPTY: Self = BitBoard { board: 0, mask: 0 };
 
+    #[inline(always)]
     fn count_moves(&self) -> usize {
         self.board.count_ones() as usize + (self.board ^ self.mask).count_ones() as usize
     }
 
+    #[inline(always)]
     fn calc_curr(&self) -> Token {
         match self.count_moves() % 2 {
             0 => Token::STARTING,
@@ -227,7 +269,7 @@ impl Board for BitBoard {
     }
 
     fn force_place(&mut self, col: column::Idx, token: Token) {
-        if (token == self.calc_curr()) {
+        if token == self.calc_curr() {
             self.board ^= self.mask;
             self.mask |= self.mask + bottom_col_mask(col);
         } else {
@@ -239,7 +281,7 @@ impl Board for BitBoard {
     fn is_won_at(&self, cell: Cell) -> bool {
         match self.get(cell) {
             Some(token) if token == self.curr() => Self::is_won(self.board),
-            Some(token) => Self::is_won(self.board ^ self.mask),
+            Some(_) => Self::is_won(self.board ^ self.mask),
             None => false
         }
     }
@@ -257,39 +299,21 @@ impl MutBoard for BitBoard {
 }
 
 impl HashBoard for BitBoard {
+    #[inline(always)]
     fn key(&self) -> u64 {
         self.board + self.mask + BOTTOM_MASK
     }
 }
 
 impl Position for BitBoard {
+    #[inline(always)]
     fn move_count(&self) -> usize {
         self.count_moves()
     }
+    #[inline(always)]
     fn curr(&self) -> Token {
         self.calc_curr()
     }
-}
-
-fn show_mask(mask: u64) -> String {
-    let mut string = String::new();
-    for col in column::COLUMNS {
-        let b = mask & ABOVE_MASK & (col_mask(col) << 1) != 0;
-        string += &format!("{:b}", b as u8);
-    }
-    string += "--";
-    for row in row::TOP_DOWN {
-        string += "\n";
-        for col in column::COLUMNS {
-            let b = mask & cell_mask(Cell { row, col }) != 0;
-            string += &format!("{:b}", b as u8);
-        }
-    }
-    string += " | ";
-    string += &format!("{:b}", mask >> 49);
-    string += "\n";
-
-    string
 }
 
 impl Debug for BitBoard {
@@ -306,7 +330,7 @@ impl Debug for BitBoard {
                 let b = self.board & cell_mask(Cell { row, col }) != 0;
                 write!(f, "{:b}", b as u8)?;
             }
-            write!(f, "   ");
+            write!(f, "   ")?;
             for col in column::COLUMNS {
                 let b = self.mask & cell_mask(Cell { row, col }) != 0;
                 write!(f, "{:b}", b as u8)?;

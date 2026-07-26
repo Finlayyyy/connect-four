@@ -8,6 +8,7 @@ pub const MAX_SCORE: isize = (MAX_MOVES as isize + 1) / 2 - 3;
 pub trait Position: Board {
     fn move_count(&self) -> usize;
 
+    #[inline(always)]
     fn completed(&self) -> bool {
         self.move_count() == MAX_MOVES
     }

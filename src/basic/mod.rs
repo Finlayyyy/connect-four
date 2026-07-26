@@ -1,4 +1,3 @@
-use std::cmp::min;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::ops::Not;
@@ -7,8 +6,7 @@ use crate::basic::finite_index::FiniteIndex;
 
 mod finite_index;
 
-/// Token on the board. A starts.
-/// May be represented as Red and Yellow
+/// Token on the connect four board.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum Token {
     A,
@@ -18,9 +16,11 @@ pub enum Token {
 impl Token {
     /// The starting token
     pub const STARTING: Token = Token::A;
+    /// The secondary token
     pub const SECOND: Token = Token::B;
 
     /// Get the next, opposite, other token
+    #[inline(always)]
     pub const fn next(&self) -> Token {
         match self {
             Token::A => Token::B,
@@ -28,10 +28,14 @@ impl Token {
         }
     }
 
-    /// next()
+    /// Get the previous token. (Same as `next()`)
+    #[inline(always)]
     pub const fn prev(&self) -> Token {
         self.next()
     }
+
+    /// The opposing token. (Same as `next()`)
+    #[inline(always)]
     pub const fn opp(&self) -> Token {
         self.next()
     }
@@ -48,18 +52,20 @@ impl Not for Token {
 impl Display for Token {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Token::A => write!(f, "Token A"),
-            Token::B => write!(f, "Token B"),
+            Token::A => write!(f, "Token(A)"),
+            Token::B => write!(f, "Token(B)"),
         }
     }
 }
 
 pub mod column {
     use super::*;
-
+    /// Number of columns on a Connect Four board
     pub const COUNT: usize = 7;
+
     pub type Idx = FiniteIndex<COUNT>;
 
+    /// Column indexes from left to right
     pub const COLUMNS: [Idx; COUNT] = [
         Idx::raw(0),
         Idx::raw(1),
@@ -70,9 +76,12 @@ pub mod column {
         Idx::raw(6),
     ];
 
+    /// Column indexes on the left side of the board, not including centre
     pub const LEFT_SIDE: [Idx; 3] = [Idx::raw(0), Idx::raw(1), Idx::raw(2)];
+    /// Column indexes on the right side of the board, not including centre
     pub const RIGHT_SIDE: [Idx; 3] = [Idx::raw(4), Idx::raw(5), Idx::raw(6)];
 
+    /// Centred column indexes, starting in the middle and moving outward
     pub const CENTRED: [Idx; COUNT] = [
         Idx::raw(3),
         Idx::raw(2),
@@ -84,19 +93,27 @@ pub mod column {
     ];
 
     impl Idx {
+        /// The leftmost column
         pub const LEFT: Self = Idx::raw(0);
+        /// The centre column
         pub const CENTRE: Self = Idx::raw(3);
+        /// The rightmost column
         pub const RIGHT: Self = Idx::raw(6);
 
+        /// Is the column strictly on the left side of the board
+        #[inline(always)]
         pub fn is_left_side(&self) -> bool {
             usize::from(*self) < 3
         }
 
+        /// Is the column strictly on the right side of the board
+        #[inline(always)]
         pub fn is_right_side(&self) -> bool {
             usize::from(*self) > 3
         }
 
         /// Returns the column on the opposite side of the board, based on vertical symmetry.
+        #[inline(always)]
         pub fn mirrored(self) -> Self {
             Self::raw(usize::from(Self::MAX) - usize::from(self))
         }
@@ -112,15 +129,18 @@ pub mod column {
 pub mod row {
     use super::*;
 
+    /// The number of rows on a Connect Four board
     pub const COUNT: usize = 6;
     pub type Idx = FiniteIndex<COUNT>;
 
     impl Idx {
+        /// The bottom row
         pub const BOTTOM: Self = Self::ZERO;
+        /// The top row
         pub const TOP: Self = Self::MAX;
     }
 
-    /// bottom to top
+    /// Row indexes from bottom to top
     pub const BOTTOM_UP: [Idx; COUNT] = [
         Idx::raw(0),
         Idx::raw(1),
@@ -129,7 +149,7 @@ pub mod row {
         Idx::raw(4),
         Idx::raw(5),
     ];
-
+    /// Row indexes from top to bottom
     pub const TOP_DOWN: [Idx; COUNT] = [
         Idx::raw(5),
         Idx::raw(4),
@@ -166,7 +186,8 @@ pub enum Dir {
 }
 
 impl Dir {
-    // -> (col offset, row offset )
+    /// Transform Dir into `(col_offset, row_offset)`
+    #[inline(always)]
     pub fn into_dir(&self) -> (isize, isize) {
         match self {
             Dir::Up => (0, 1),
@@ -188,7 +209,9 @@ impl From<Dir> for (isize, isize) {
 }
 
 impl Cell {
-    /// Tries to shift by (col, row)
+    /// Tries to shift the cell by (col, row), returning `None`
+    /// when out of bounds
+    #[inline(always)]
     pub fn try_shift(&self, dir: Dir, by: usize) -> Option<Cell> {
         let by: isize = isize::try_from(by).unwrap();
         let (col_offset, row_offset) = dir.into();
@@ -197,14 +220,24 @@ impl Cell {
         Some(Cell { col, row })
     }
 
+    /// The cell above, returning `None` for any cell in the
+    /// top row of the board
+    #[inline(always)]
     pub fn above(&self) -> Option<Cell> {
         self.try_shift(Dir::Up, 1)
     }
 
+    /// Returns an iterator over cells in the given direction
+    /// from the given cell for distances 1 to 3. Does not include the
+    /// given cell.
+    #[inline(always)]
     pub fn nbhd_in(&self, dir: Dir) -> impl Iterator<Item = (usize, Cell)> {
         (1..=3).map_while(move |by| Some((by, self.try_shift(dir, by)?)))
     }
 
+    /// The cell on the mirrored position on the board, based
+    /// on vertical symmetry.
+    #[inline(always)]
     pub fn mirrored(&self) -> Self {
         Cell {
             col: self.col.mirrored(),
