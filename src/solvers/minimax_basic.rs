@@ -5,66 +5,79 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use crate::basic::*;
 use crate::board::{CloneBoard, MutBoard};
 use crate::solver_utils::*;
+use crate::solvers::{Solver, ABSolver};
 
-pub fn minimax_mut<P: Position + MutBoard, S: SolverManager>(
-    pos: P,
-    boss: &mut S,
-) -> ControlFlow<S::Break, isize> {
-    let mut pos = pos;
-    minimax_mut_helper(&mut pos, boss)
-}
+pub struct MinimaxMut { }
+impl MinimaxMut {
+    fn minimax<P: Position + MutBoard, M: SolverManager>(
+        pos: &mut P,
+        boss: &mut M
+    ) -> ControlFlow<M::Break, isize> {
+        boss.check()?;
 
-fn minimax_mut_helper<P: Position + MutBoard, S: SolverManager>(
-    pos: &mut P,
-    boss: &mut S,
-) -> ControlFlow<S::Break, isize> {
-    boss.check()?;
+        if pos.completed() {
+            return ControlFlow::Continue(0);
+        }
 
-    if pos.completed() {
-        return ControlFlow::Continue(0);
-    }
+        let mut best_score = isize::MIN;
 
-    let mut best_score = isize::MIN;
+        for col in column::CENTRED {
+            let Some(cell) = pos.place_curr(col) else {
+                continue;
+            };
+            if pos.is_won_at(cell) {
+                let score = pos.just_won_score();
+                pos.unplace(col);
+                return ControlFlow::Continue(score);
+            }
 
-    for col in column::CENTRED {
-        let Some(cell) = pos.place_curr(col) else {
-            continue;
-        };
-        if pos.is_won_at(cell) {
-            let score = pos.just_won_score();
+            let score = -Self::minimax(pos, boss)?;
             pos.unplace(col);
-            return ControlFlow::Continue(score);
+            best_score = max(best_score, score);
         }
 
-        let score = -minimax_mut_helper(pos, boss)?;
-        pos.unplace(col);
-        best_score = max(best_score, score);
+        ControlFlow::Continue(best_score)
     }
-
-    ControlFlow::Continue(best_score)
 }
 
-pub fn minimax_clone<P: Position + CloneBoard, S: SolverManager>(
-    pos: P,
-    boss: &mut S,
-) -> ControlFlow<S::Break, isize> {
-    boss.check()?;
-
-    if pos.completed() {
-        return ControlFlow::Continue(0);
+impl<P: Position + MutBoard> Solver<P> for MinimaxMut {
+    fn solve<M: SolverManager>(pos: P, boss: &mut M, cache: &mut Cache) -> ControlFlow<M::Break, isize> {
+        let mut pos = pos;
+        Self::minimax(&mut pos, boss)
     }
+}
 
-    let mut best_score = isize::MIN;
+pub struct MinimaxClone { }
 
-    for (col, next_pos) in pos.nexts(pos.curr()) {
-        if next_pos.is_won_at_col(col) {
-            return ControlFlow::Continue(next_pos.just_won_score());
+impl MinimaxClone {
+    fn minimax<P: Position + CloneBoard, M: SolverManager>(
+        pos: P,
+        boss: &mut M
+    ) -> ControlFlow<M::Break, isize> {
+        boss.check()?;
+
+        if pos.completed() {
+            return ControlFlow::Continue(0);
         }
 
-        let score = -minimax_clone(next_pos, boss)?;
-        best_score = max(best_score, score);
+        let mut best_score = isize::MIN;
+
+        for (col, next_pos) in pos.nexts(pos.curr()) {
+            if next_pos.is_won_at_col(col) {
+                return ControlFlow::Continue(next_pos.just_won_score());
+            }
+
+            let score = -Self::minimax(next_pos, boss)?;
+            best_score = max(best_score, score);
+        }
+        ControlFlow::Continue(best_score)
     }
-    ControlFlow::Continue(best_score)
+}
+
+impl<P: Position + CloneBoard> Solver<P> for MinimaxClone {
+    fn solve<M: SolverManager>(pos: P, boss: &mut M, cache: &mut Cache) -> ControlFlow<M::Break, isize> {
+        Self::minimax(pos, boss)
+    }
 }
 
 #[cfg(test)]
@@ -72,7 +85,7 @@ mod mut_tests {
     use super::*;
     use crate::solvers::testing::*;
 
-    make_solver_tests!(solve_using(&minimax_mut), BitCols, BitBoard, SymmBoard);
+    make_solver_tests!(100 => MinimaxMut | BitCols);
 }
 
 #[cfg(test)]
@@ -80,5 +93,5 @@ mod clone_tests {
     use super::*;
     use crate::solvers::testing::*;
 
-    make_solver_tests!(solve_using(&minimax_clone), BitCols, BitBoard, SymmBoard);
+    make_solver_tests!(100 => MinimaxClone | BitCols);
 }

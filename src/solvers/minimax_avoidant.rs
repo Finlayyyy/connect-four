@@ -7,21 +7,10 @@ use std::ops::ControlFlow;
 use crate::basic::*;
 use crate::board::{Board, CloneBoard, HashBoard, MutBoard};
 use crate::solver_utils::*;
+use crate::solvers::{Solver, ABSolver};
 
-pub fn minimax_avoidant<P: Position + CloneBoard + HashBoard, S: SolverManager>(
-    pos: P,
-    boss: &mut S,
-) -> ControlFlow<S::Break, isize> {
-    let mut lower = HashMap::new(hash_map::LARGE_SIZE);
-    let mut upper = HashMap::new(hash_map::LARGE_SIZE);
-    let alpha = pos.will_lose_score();
-    let beta = pos.will_win_score();
-    let result = minimax_avoidant_helper(pos, boss, alpha, beta, &mut lower, &mut upper);
-    result
-}
-
-#[derive(Clone, Copy, Debug)]
 /// (curr_triples, opp_triples, curr_pairs, opp_pairs)
+#[derive(Clone, Copy, Debug)]
 struct NbhdCounts(usize, usize, usize, usize);
 impl NbhdCounts {
     fn heuristic(&self) -> usize {
@@ -63,84 +52,75 @@ impl NbhdCounts {
     }
 }
 
-pub fn minimax_avoidant_helper<P: Position + CloneBoard + HashBoard, S: SolverManager>(
-    pos: P,
-    boss: &mut S,
-    mut alpha: isize,
-    mut beta: isize,
-    lower: &mut HashMap,
-    upper: &mut HashMap,
-) -> ControlFlow<S::Break, isize> {
-    boss.check()?;
-    if pos.completed() {
-        return ControlFlow::Continue(0);
-    };
+pub struct MinimaxAvoidant { }
+impl<P: Position + CloneBoard + HashBoard> ABSolver<P> for MinimaxAvoidant {
+    fn minimax<M: SolverManager>(
+        pos: P,
+        boss: &mut M,
+        cache: &mut Cache,
+        mut alpha: isize,
+        mut beta: isize,
+    ) -> ControlFlow<M::Break, isize> {
+        boss.check()?;
+        if pos.completed() { return ControlFlow::Continue(0); }
 
-    if let Some(min) = lower.get(&pos) {
-        alpha = max(alpha, min)
-    };
-    if let Some(max) = upper.get(&pos) {
-        beta = min(beta, max)
-    };
-    if alpha >= beta {
-        return ControlFlow::Continue(beta);
-    };
+        (alpha, beta) = cache.check(&pos, alpha, beta);
+        if alpha >= beta { return ControlFlow::Continue(beta); }
 
-    let mut moves = MoveSorter::<{ column::COUNT }, _, _>::new();
-    let mut must_play = None;
-    let mut must_avoid = None;
-    let mut will_lose = false;
+        let mut moves = MoveSorter::<{ column::COUNT }, _, _>::new();
+        let mut must_play = None;
+        let mut must_avoid = None;
+        let mut will_lose = false;
 
-    for cell in pos.next_cells() {
-        match NbhdCounts::new_at(&pos, cell) {
-            // curr has at least one immediately winning move
-            MoveResult::CurrWin => return ControlFlow::Continue(pos.will_win_score()),
-            // opponent has at least one winning move next turn
-            MoveResult::BlockOppWin if must_play.is_none() => must_play = Some(cell.col),
-            // opponent has at least two winning moves next turn, thus curr has lost.
-            MoveResult::BlockOppWin | MoveResult::ForcedOppWin => will_lose = true,
-            // Playing this move will allow opponent to win
-            MoveResult::LetOppWin => must_avoid = Some(cell.col),
-            // there are no immediate wins or losses
-            MoveResult::Nbhd(nbhd) => moves.push_sorting(nbhd.heuristic(), cell.col),
+        for cell in pos.next_cells() {
+            match NbhdCounts::new_at(&pos, cell) {
+                // curr has at least one immediately winning move
+                MoveResult::CurrWin => return ControlFlow::Continue(pos.will_win_score()),
+                // opponent has at least one winning move next turn
+                MoveResult::BlockOppWin if must_play.is_none() => must_play = Some(cell.col),
+                // opponent has at least two winning moves next turn, thus curr has lost.
+                MoveResult::BlockOppWin | MoveResult::ForcedOppWin => will_lose = true,
+                // Playing this move will allow opponent to win
+                MoveResult::LetOppWin => must_avoid = Some(cell.col),
+                // there are no immediate wins or losses
+                MoveResult::Nbhd(nbhd) => moves.push_sorting(nbhd.heuristic(), cell.col),
+            }
         }
-    }
-    if will_lose {
-        return ControlFlow::Continue(pos.will_lose_score());
-    };
-    if moves.is_empty() && must_play.is_none() {
-        must_play = must_avoid
-    };
 
-    // We must play in this column either to stop the opponent from winning,
-    // or because it is the only option left
-    if let Some(col) = must_play {
-        let next_pos = pos.placed(col, pos.curr()).unwrap();
+        if will_lose || (moves.is_empty() && must_play.is_none()) {
+            return ControlFlow::Continue(pos.will_lose_score());
+        };
 
-        let score = -minimax_avoidant_helper(next_pos, boss, -beta, -alpha, lower, upper)?;
-        alpha = max(alpha, score);
-        return ControlFlow::Continue(score);
-    }
-
-    alpha = max(alpha, pos.will_lose_score() + 1);
-    beta = min(beta, pos.will_win_score() - 1);
-    if alpha >= beta {
-        return ControlFlow::Continue(beta);
-    };
-
-    for col in moves {
-        let next_pos = pos.placed(col, pos.curr()).unwrap();
-        let score = -minimax_avoidant_helper(next_pos, boss, -beta, -alpha, lower, upper)?;
-        alpha = max(alpha, score);
-
-        if score >= beta {
-            lower.insert(&pos, score);
-            return ControlFlow::Continue(score);
+        // We must play in this column either to stop the opponent from winning,
+        // or because it is the only option left
+        if let Some(col) = must_play {
+            moves = MoveSorter::singleton(0, col);
         }
-    }
 
-    upper.insert(&pos, alpha);
-    ControlFlow::Continue(alpha)
+        alpha = max(alpha, pos.will_lose_score() + 1);
+        beta = min(beta, pos.will_win_score() - 1);
+        if alpha >= beta { return ControlFlow::Continue(beta); }
+
+        let lower = alpha;
+        let mut best = isize::MIN;
+        for col in moves {
+            let next_pos = pos.placed(col, pos.curr()).unwrap();
+            let score = -Self::minimax(next_pos, boss, cache, -beta, -alpha)?;
+            best = max(best, score);
+            alpha = max(alpha, score);
+            if alpha >= beta { break; }
+        }
+
+        cache.check_insert(&pos, lower, best, beta);
+        ControlFlow::Continue(best)
+    }
+}
+impl<P: Position + CloneBoard + HashBoard> Solver<P> for MinimaxAvoidant {
+    fn solve<M: SolverManager>(pos: P, boss: &mut M, cache: &mut Cache) -> ControlFlow<M::Break, isize> {
+        let min = pos.will_lose_score();
+        let max = pos.will_win_score();
+        Self::minimax(pos, boss, cache, min, max)
+    }
 }
 
 #[cfg(test)]
@@ -148,5 +128,5 @@ mod tests {
     use super::*;
     use crate::solvers::testing::*;
 
-    make_solver_tests!(solve_using(&minimax_avoidant), BitCols, BitBoard, SymmBoard);
+    make_solver_tests!(MinimaxAvoidant | BitCols, BitBoard, SymmBoard);
 }

@@ -5,9 +5,9 @@ use crate::basic::*;
 use crate::benching::*;
 use crate::board::*;
 use crate::solver_utils::*;
-use crate::solvers::minimax_avoidant::minimax_avoidant_helper;
-use crate::solvers::minimax_ordered::minimax_ordered_helper;
-use crate::solvers::minimax_quick_avoid::minimax_quick_avoid_helper;
+use crate::solvers::minimax_avoidant::MinimaxAvoidant;
+use crate::solvers::minimax_ordered::MinimaxOrdered;
+use crate::solvers::minimax_quick::MinimaxQuick;
 use crate::solvers::*;
 
 use std::env;
@@ -22,46 +22,7 @@ mod solver_utils;
 mod solvers;
 
 fn play() {
-    let moves = "444443433365666233222755555226617771";
-    let moves = Moves::from_string(moves);
-    let pos = BitBoard::from_moves(&moves);
-    pos.display();
-
-    let mut lower = HashMap::new(hash_map::LARGE_SIZE);
-    let mut upper = HashMap::new(hash_map::LARGE_SIZE);
-    let mut alpha = pos.will_lose_score();
-    let mut beta = pos.will_win_score();
-
-    let mut best_col = None;
-    let mut best = isize::MIN;
-    let mut broken = None;
-
-    for (col, next) in pos.nexts(pos.curr()) {
-        let mut boss = Timeout::new(Duration::from_secs(5), LaissezFaire {});
-        boss.start_timer();
-        let result =
-            minimax_avoidant_helper(next, &mut boss, -beta, -alpha, &mut lower, &mut upper);
-        println!("[{col}] => {result:?}");
-        match result {
-            ControlFlow::Continue(score) if -score > best => {
-                best = -score;
-                best_col = Some(col);
-            }
-            ControlFlow::Break(_) if broken.is_none() => {
-                broken = Some(col);
-            }
-            _ => (),
-        }
-    }
-    let col = match best_col {
-        Some(col) if best < 0 && broken.is_some() => broken.unwrap(),
-        Some(col) => col,
-        None => broken.unwrap(),
-    };
-    println!();
-    println!("Chose col `{col:?} with score `{best}");
-    let next = pos.placed(col, pos.curr()).unwrap();
-    next.display();
+    todo!();
 }
 
 fn bench_very_easy() {
@@ -69,11 +30,11 @@ fn bench_very_easy() {
     let testsets = [END_EASY, MIDDLE_EASY];
     let tests = Bencher::read_testsets(&testsets, 100);
     let bencher = Bencher::new(tests, &testsets, Duration::from_secs(5));
-    bench!(bencher, WithInfo<ArrayBoard>, minimax_mut);
-    bench!(bencher, BitCols, minimax_mut);
-    bench!(bencher, BitCols, minimax_clone);
-    bench!(bencher, SymmBoard, minimax_mut);
-    bench!(bencher, SymmBoard, minimax_clone);
+    bench!(bencher, WithInfo<ArrayBoard>, MinimaxMut);
+    bench!(bencher, BitCols, MinimaxMut);
+    bench!(bencher, BitCols, MinimaxClone);
+    bench!(bencher, SymmBoard, MinimaxMut);
+    bench!(bencher, SymmBoard, MinimaxClone);
 }
 
 fn bench_easy() {
@@ -81,25 +42,25 @@ fn bench_easy() {
     let testsets = [END_EASY, MIDDLE_EASY, MIDDLE_MEDIUM];
     let tests = Bencher::read_testsets(&testsets, 100);
     let bencher = Bencher::new(tests, &testsets, Duration::from_secs(15));
-    bench!(bencher, BitCols, minimax_alphabeta);
-    bench!(bencher, WithInfo<BitCols>, minimax_alphabeta);
+    bench!(bencher, BitCols, MinimaxAlphaBeta);
+    bench!(bencher, WithInfo<BitCols>, MinimaxAlphaBeta);
     println!();
-    bench!(bencher, BitCols, minimax_cached);
-    bench!(bencher, WithInfo<BitCols>, minimax_cached);
-    bench!(bencher, SymmBoard, minimax_cached);
-    bench!(bencher, WithInfo<SymmBoard>, minimax_cached);
+    bench!(bencher, BitCols, MinimaxCached);
+    bench!(bencher, WithInfo<BitCols>, MinimaxCached);
+    bench!(bencher, SymmBoard, MinimaxCached);
+    bench!(bencher, WithInfo<SymmBoard>, MinimaxCached);
     println!();
-    bench!(bencher, BitCols, minimax_ab_cached);
-    bench!(bencher, WithInfo<BitCols>, minimax_ab_cached);
-    bench!(bencher, SymmBoard, minimax_ab_cached);
-    bench!(bencher, WithInfo<SymmBoard>, minimax_ab_cached);
-    bench!(bencher, BitBoard, minimax_ab_cached);
+    bench!(bencher, BitCols, MinimaxABCached);
+    bench!(bencher, WithInfo<BitCols>, MinimaxABCached);
+    bench!(bencher, SymmBoard, MinimaxABCached);
+    bench!(bencher, WithInfo<SymmBoard>, MinimaxABCached);
+    bench!(bencher, BitBoard, MinimaxABCached);
     println!();
-    bench!(bencher, BitCols, minimax_symm);
-    bench!(bencher, WithInfo<BitCols>, minimax_symm);
-    bench!(bencher, SymmBoard, minimax_symm);
-    bench!(bencher, WithInfo<SymmBoard>, minimax_symm);
-    bench!(bencher, BitBoard, minimax_symm);
+    bench!(bencher, BitCols, MinimaxSymm);
+    bench!(bencher, WithInfo<BitCols>, MinimaxSymm);
+    bench!(bencher, SymmBoard, MinimaxSymm);
+    bench!(bencher, WithInfo<SymmBoard>, MinimaxSymm);
+    bench!(bencher, BitBoard, MinimaxSymm);
 }
 
 fn bench_medium() {
@@ -107,14 +68,14 @@ fn bench_medium() {
     let testsets = [MIDDLE_MEDIUM, BEGIN_EASY];
     let tests = Bencher::read_testsets(&testsets, 100);
     let bencher = Bencher::new(tests, &testsets, Duration::from_secs(30));
-    bench!(bencher, BitCols, minimax_ordered);
-    bench!(bencher, SymmBoard, minimax_ordered);
+    bench!(bencher, BitCols, MinimaxOrdered);
+    bench!(bencher, SymmBoard, MinimaxOrdered);
     println!();
-    bench!(bencher, BitCols, minimax_avoidant);
-    bench!(bencher, SymmBoard, minimax_avoidant);
-    bench!(bencher, BitBoard, minimax_avoidant);
+    bench!(bencher, BitCols, MinimaxAvoidant);
+    bench!(bencher, SymmBoard, MinimaxAvoidant);
+    bench!(bencher, BitBoard, MinimaxAvoidant);
     println!();
-    bench!(bencher, BitBoard, minimax_quick_avoid);
+    bench!(bencher, BitBoard, MinimaxQuick);
 }
 
 fn bench_hard() {
@@ -122,42 +83,17 @@ fn bench_hard() {
     let testsets = [MIDDLE_MEDIUM, BEGIN_EASY, BEGIN_MEDIUM, BEGIN_HARD];
     let tests = Bencher::read_testsets(&testsets, 100);
     let bencher = Bencher::new(tests, &testsets, Duration::from_secs(60));
-    bench!(
-        bencher,
-        BitCols,
-        "deep_ordered<BitCols>",
-        &minimax_deepening(&minimax_ordered_helper)
-    );
-    bench!(
-        bencher,
-        BitCols,
-        "deep_avoidant<BitCols>",
-        &minimax_deepening(&minimax_avoidant_helper)
-    );
-    bench!(
-        bencher,
-        SymmBoard,
-        "deep_avoidant<SymmBoard>",
-        &minimax_deepening(&minimax_avoidant_helper)
-    );
-    bench!(
-        bencher,
-        BitBoard,
-        "deep_quick<BitBoard>",
-        &minimax_deepening(&minimax_quick_avoid_helper)
-    );
+    bench!(bencher, BitCols, Deepening<MinimaxOrdered>);
+    bench!(bencher, BitCols, Deepening<MinimaxAvoidant>);
+    bench!(bencher, SymmBoard, Deepening<MinimaxAvoidant>);
+    bench!(bencher, BitBoard, Deepening<MinimaxQuick>);
 }
 
 fn bench_solve() {
     println!("BENCH SOLVE");
     let tests = vec![vec![(Moves::EMPTY, 1)]];
     let bencher = Bencher::new(tests, &["SOLVE"], Duration::from_mins(30));
-    bench!(
-        bencher,
-        BitBoard,
-        "deep_quick<BitBoard>",
-        &minimax_deepening(&minimax_quick_avoid_helper)
-    );
+    bench!(bencher, BitBoard, Deepening<MinimaxQuick>);
 }
 
 fn bench() {
@@ -165,7 +101,6 @@ fn bench() {
     bench_easy();
     bench_medium();
     bench_hard();
-    bench_solve();
 }
 
 fn display_usage() {
@@ -184,10 +119,10 @@ fn main() {
         Some("-h") => display_usage(),
         Some("bench") => match args.next().map(|s| s.to_lowercase()).as_deref() {
             None => bench(),
-            Some("easy") => bench_very_easy(),
-            Some("medium") => bench_easy(),
-            Some("hard") => bench_medium(),
-            Some("extreme") => bench_hard(),
+            Some("easy") => bench_easy(),
+            Some("medium") => bench_medium(),
+            Some("hard") => bench_hard(),
+            Some("solve") => bench_solve(),
             Some(cmd) => {
                 println!("Unrecognised command '{}'\n", cmd);
                 display_usage();

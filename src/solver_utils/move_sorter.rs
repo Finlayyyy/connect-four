@@ -14,6 +14,12 @@ impl<const N: usize, K: Ord, T> MoveSorter<N, K, T> {
         }
     }
 
+    pub fn singleton(key: K, elem: T) -> Self {
+        let mut elems = [Self::UNINIT; N];
+        elems[0] = MaybeUninit::new((key, elem));
+        MoveSorter { len: 1, elems }
+    }
+
     pub fn is_empty(&self) -> bool {
         self.len == 0
     }

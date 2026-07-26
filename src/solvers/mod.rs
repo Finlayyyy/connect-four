@@ -14,18 +14,40 @@ pub mod minimax_basic;
 pub mod minimax_cached;
 pub mod minimax_deepening;
 pub mod minimax_ordered;
-pub mod minimax_quick_avoid;
+pub mod minimax_quick;
 pub mod minimax_symm;
 
-pub use minimax_ab_cached::minimax_ab_cached;
-pub use minimax_alphabeta::minimax_alphabeta;
-pub use minimax_avoidant::minimax_avoidant;
-pub use minimax_basic::minimax_clone;
-pub use minimax_basic::minimax_mut;
-pub use minimax_cached::minimax_cached;
-pub use minimax_deepening::minimax_deepening;
-pub use minimax_ordered::minimax_ordered;
-pub use minimax_quick_avoid::minimax_quick_avoid;
-pub use minimax_symm::minimax_symm;
+pub use minimax_ab_cached::MinimaxABCached;
+pub use minimax_alphabeta::MinimaxAlphaBeta;
+pub use minimax_avoidant::MinimaxAvoidant;
+pub use minimax_basic::MinimaxClone;
+pub use minimax_basic::MinimaxMut;
+pub use minimax_cached::MinimaxCached;
+pub use minimax_deepening::Deepening;
+pub use minimax_ordered::MinimaxOrdered;
+pub use minimax_quick::MinimaxQuick;
+pub use minimax_symm::MinimaxSymm;
 
-use crate::solver_utils::solver_manager::*;
+use crate::solver_utils::*;
+
+pub trait Solver<P> {
+    fn solve<M: SolverManager>(pos: P, boss: &mut M, cache: &mut Cache) -> ControlFlow<M::Break, isize>;
+
+    fn just_solve(pos: P) -> isize {
+        let mut boss = LaissezFaire { };
+        let mut cache = Cache::new(Cache::SMALL_SIZE);
+        match Self::solve(pos, &mut boss, &mut cache) {
+            ControlFlow::Continue(score) => score
+        }
+    }
+}
+
+pub trait ABSolver<P>: Solver<P> {
+    fn minimax<M: SolverManager>(
+        pos: P,
+        boss: &mut M,
+        cache: &mut Cache,
+        alpha: isize,
+        beta: isize,
+    ) -> ControlFlow<M::Break, isize>;
+}
