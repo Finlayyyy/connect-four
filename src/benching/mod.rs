@@ -136,10 +136,12 @@ where
 
     let start = Instant::now();
     let ControlFlow::Continue(score) = S::solve(pos, boss, cache) else {
+        cache.clear();
         return None;
     };
     let dur = start.elapsed().as_millis();
 
     assert_eq!(score, correct, "Score assertion failed for moves {}", moves);
+    cache.clear();
     return Some(dur as usize);
 }

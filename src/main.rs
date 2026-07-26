@@ -101,7 +101,6 @@ fn bench() {
     bench_easy();
     bench_medium();
     bench_hard();
-    bench_solve();
 }
 
 fn display_usage() {
@@ -120,10 +119,10 @@ fn main() {
         Some("-h") => display_usage(),
         Some("bench") => match args.next().map(|s| s.to_lowercase()).as_deref() {
             None => bench(),
-            Some("easy") => bench_very_easy(),
-            Some("medium") => bench_easy(),
-            Some("hard") => bench_medium(),
-            Some("extreme") => bench_hard(),
+            Some("easy") => bench_easy(),
+            Some("medium") => bench_medium(),
+            Some("hard") => bench_hard(),
+            Some("solve") => bench_solve(),
             Some(cmd) => {
                 println!("Unrecognised command '{}'\n", cmd);
                 display_usage();
