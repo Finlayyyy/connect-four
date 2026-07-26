@@ -19,9 +19,9 @@ fn u8_to_token(bit: u8) -> Token {
 /// A column of the BitBoard, stored as a u8.
 /// Formatted with a leading 1 bit, followed by the rows from bottom to top,
 /// The top tile is the LSB and the bottom tile is the MSB after the leading 1.
-// Examples:
-// 0b01ab_cdef : col is full, a at bottom, f at top
-// 0b0000_0001 : col is empty
+/// Examples:
+/// 0b01ab_cdef : col is full, a at bottom, f at top
+/// 0b0000_0001 : col is empty
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct BitCol(u8);
 

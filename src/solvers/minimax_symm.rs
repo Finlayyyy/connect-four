@@ -1,3 +1,5 @@
+use std::iter::once;
+
 use crate::basic::*;
 use crate::board::{Board, CloneBoard, HashBoard};
 use crate::solver_utils::*;
@@ -19,7 +21,7 @@ fn make_diffs<B: Board>(board: &B) -> Option<SymmDiff> {
     let mut diffs = [0; 3];
     for i in 0..3 {
         let col_l = column::Idx::try_from(i).unwrap();
-        let col_r = col_l.reflected();
+        let col_r = col_l.mirrored();
         for row in row::BOTTOM_UP {
             let left = board.get(Cell { col: col_l, row });
             let right = board.get(Cell { col: col_r, row });
@@ -59,7 +61,7 @@ fn next_diffs<B: Board>(board: &B, col: column::Idx, diffs: SymmDiff) -> Option<
     let mut new_diffs = diffs;
     let cell = board.top(col).unwrap();
     let token = board.get(cell)?;
-    let cell_c = cell.reflected();
+    let cell_c = cell.mirrored();
 
     if let Some(token_c) = board.get(cell_c)
         && token != token_c
@@ -67,7 +69,7 @@ fn next_diffs<B: Board>(board: &B, col: column::Idx, diffs: SymmDiff) -> Option<
         return None;
     }
 
-    if cell.col.is_left() {
+    if cell.col.is_left_side() {
         new_diffs[usize::from(cell.col)] -= 1;
     } else {
         new_diffs[usize::from(cell_c.col)] += 1;
@@ -81,7 +83,7 @@ fn next_boards<P: Position + CloneBoard>(
     diffs: SymmDiff,
 ) -> Vec<(Option<SymmDiff>, column::Idx, P)> {
     match diffs {
-        [0, 0, 0] => (column::LEFT..=column::CENTRE)
+        [0, 0, 0] => column::LEFT_SIDE.into_iter().chain(once(column::Idx::CENTRE))
             .filter_map(|col| {
                 let pos = pos.placed(col, pos.curr())?;
                 Some((col, pos))

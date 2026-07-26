@@ -16,7 +16,7 @@ pub enum Token {
 }
 
 impl Token {
-    /// The starting token 
+    /// The starting token
     pub const STARTING: Token = Token::A;
     pub const SECOND: Token = Token::B;
 
@@ -29,14 +29,20 @@ impl Token {
     }
 
     /// next()
-    pub const fn prev(&self) -> Token { self.next() }
-    pub const fn opp(&self) -> Token { self.next() }
+    pub const fn prev(&self) -> Token {
+        self.next()
+    }
+    pub const fn opp(&self) -> Token {
+        self.next()
+    }
 }
 
 impl Not for Token {
     type Output = Token;
 
-    fn not(self) -> Self::Output { self.next() }
+    fn not(self) -> Self::Output {
+        self.next()
+    }
 }
 
 impl Display for Token {
@@ -54,9 +60,18 @@ pub mod column {
     pub const COUNT: usize = 7;
     pub type Idx = FiniteIndex<COUNT>;
 
-    pub const LEFT: Idx = Idx::LEFT;
-    pub const CENTRE: Idx = Idx::CENTRE;
-    pub const RIGHT: Idx = Idx::RIGHT;
+    pub const COLUMNS: [Idx; COUNT] = [
+        Idx::raw(0),
+        Idx::raw(1),
+        Idx::raw(2),
+        Idx::raw(3),
+        Idx::raw(4),
+        Idx::raw(5),
+        Idx::raw(6),
+    ];
+
+    pub const LEFT_SIDE: [Idx; 3] = [Idx::raw(0), Idx::raw(1), Idx::raw(2)];
+    pub const RIGHT_SIDE: [Idx; 3] = [Idx::raw(4), Idx::raw(5), Idx::raw(6)];
 
     pub const CENTRED: [Idx; COUNT] = [
         Idx::raw(3),
@@ -73,20 +88,16 @@ pub mod column {
         pub const CENTRE: Self = Idx::raw(3);
         pub const RIGHT: Self = Idx::raw(6);
 
-        pub fn is_left(&self) -> bool {
+        pub fn is_left_side(&self) -> bool {
             usize::from(*self) < 3
         }
 
-        pub fn is_centre(&self) -> bool {
-            *self == CENTRE
+        pub fn is_right_side(&self) -> bool {
+            usize::from(*self) > 3
         }
 
-        pub fn is_right(&self) -> bool {
-            usize::from(*self) < 3
-        }
-
-        /// Returns the column on the opposite side of the board, based on symmetry.
-        pub fn reflected(self) -> Self {
+        /// Returns the column on the opposite side of the board, based on vertical symmetry.
+        pub fn mirrored(self) -> Self {
             Self::raw(usize::from(Self::MAX) - usize::from(self))
         }
     }
@@ -102,7 +113,6 @@ pub mod row {
     use super::*;
 
     pub const COUNT: usize = 6;
-
     pub type Idx = FiniteIndex<COUNT>;
 
     impl Idx {
@@ -143,83 +153,61 @@ pub struct Cell {
     pub row: row::Idx,
 }
 
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
+pub enum Dir {
+    Up,
+    Down,
+    Left,
+    Right,
+    RightUp,
+    LeftDown,
+    RightDown,
+    LeftUp,
+}
+
+impl Dir {
+    // -> (col offset, row offset )
+    pub fn into_dir(&self) -> (isize, isize) {
+        match self {
+            Dir::Up => (0, 1),
+            Dir::Down => (0, -1),
+            Dir::Left => (-1, 0),
+            Dir::Right => (1, 0),
+            Dir::RightUp => (1, 1),
+            Dir::LeftDown => (-1, -1),
+            Dir::RightDown => (1, -1),
+            Dir::LeftUp => (-1, 1),
+        }
+    }
+}
+
+impl From<Dir> for (isize, isize) {
+    fn from(value: Dir) -> Self {
+        value.into_dir()
+    }
+}
+
 impl Cell {
     /// Tries to shift by (col, row)
-    pub fn try_shift(&self, by: (isize, isize)) -> Option<Cell> {
-        let col = self.col.try_shift(by.0)?;
-        let row = self.row.try_shift(by.1)?;
+    pub fn try_shift(&self, dir: Dir, by: usize) -> Option<Cell> {
+        let by: isize = isize::try_from(by).unwrap();
+        let (col_offset, row_offset) = dir.into();
+        let col = self.col.try_shift(col_offset * by)?;
+        let row = self.row.try_shift(row_offset * by)?;
         Some(Cell { col, row })
     }
 
     pub fn above(&self) -> Option<Cell> {
-        self.try_shift((0, 1))
+        self.try_shift(Dir::Up, 1)
     }
 
-    /// Returns an iterator over the cells in the same row as this cell,
-    /// from 3 columns to the left to 3 columns to the right (capped at the board edges).
-    pub fn row_neighbourhood(&self) -> impl Iterator<Item = Cell> {
-        (self.col.shift(-3)..=self.col.shift(3)).map(move |col| Cell { col, row: self.row })
+    pub fn nbhd_in(&self, dir: Dir) -> impl Iterator<Item = (usize, Cell)> {
+        (1..=3).map_while(move |by| Some((by, self.try_shift(dir, by)?)))
     }
 
-    /// Returns an iterator over the cells in the same column as this cell,
-    /// from 3 rows below to 3 rows above (capped at the board edges).
-    pub fn col_neighbourhood(&self) -> impl Iterator<Item = Cell> {
-        (self.row.shift(-3)..=self.row.shift(3)).map(move |row| Cell { col: self.col, row })
-    }
-
-    /// Returns an iterator over the cells in the same diagonal (bottom-left to top-right)
-    /// as this cell within a distance of 3 (capped at the board edges).
-    pub fn diag1_neighbourhood(&self) -> impl Iterator<Item = Cell> {
-        let start_offset = -min(
-            3,
-            min(
-                isize::from(self.col),
-                isize::from(self.row),
-            ),
-        );
-
-        let end_offset = min(
-            3,
-            min(
-                isize::from(column::Idx::MAX) - isize::from(self.col),
-                isize::from(row::Idx::MAX) - isize::from(self.row),
-            ),
-        );
-
-        (start_offset..=end_offset).map(move |offset| Cell {
-            col: self.col.shift(offset),
-            row: self.row.shift(offset),
-        })
-    }
-
-    /// Returns an iterator over the cells in the same diagonal (top-left to bottom-right)
-    /// as this cell within a distance of 3 (capped at the board edges).
-    pub fn diag2_neighbourhood(&self) -> impl Iterator<Item = Cell> {
-        let start_offset = -min(
-            3,
-            min(
-                isize::try_from(self.col).unwrap(),
-                isize::try_from(row::Idx::MAX).unwrap() - isize::try_from(self.row).unwrap(),
-            ),
-        );
-
-        let end_offset = min(
-            3,
-            min(
-                isize::try_from(column::Idx::MAX).unwrap() - isize::try_from(self.col).unwrap(),
-                isize::try_from(self.row).unwrap(),
-            ),
-        );
-
-        (start_offset..=end_offset).map(move |offset| Cell {
-            col: self.col.shift(offset),
-            row: self.row.shift(-offset),
-        })
-    }
-
-    pub fn reflected(&self) -> Self {
+    pub fn mirrored(&self) -> Self {
         Cell {
-            col: self.col.reflected(),
+            col: self.col.mirrored(),
             row: self.row,
         }
     }

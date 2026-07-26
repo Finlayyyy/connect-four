@@ -40,13 +40,13 @@ enum MoveResult {
 
 impl NbhdCounts {
     fn new_at<P: Position + Board>(pos: &P, cell: Cell) -> MoveResult {
-        let Some((curr_pairs, curr_triples)) = pos.count_adjacent_at(cell, pos.curr()) else {
+        let Some((curr_pairs, curr_triples)) = pos.count_adjacent_around(cell, pos.curr()) else {
             return MoveResult::CurrWin;
         };
 
-        let Some((opp_pairs, opp_triples)) = pos.count_adjacent_at(cell, pos.opp()) else {
+        let Some((opp_pairs, opp_triples)) = pos.count_adjacent_around(cell, pos.opp()) else {
             if let Some(above) = cell.above() {
-                if pos.count_adjacent_at(above, pos.opp()).is_none() {
+                if pos.count_adjacent_around(above, pos.opp()).is_none() {
                     return MoveResult::ForcedOppWin;
                 }
             }
@@ -54,7 +54,7 @@ impl NbhdCounts {
         };
 
         if let Some(above) = cell.above() {
-            if pos.count_adjacent_at(above, pos.opp()).is_none() {
+            if pos.count_adjacent_around(above, pos.opp()).is_none() {
                 return MoveResult::LetOppWin;
             }
         }

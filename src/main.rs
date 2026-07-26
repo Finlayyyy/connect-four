@@ -1,4 +1,4 @@
-#![feature(step_trait, generic_const_exprs, never_type)]
+#![feature(generic_const_exprs, never_type)]
 #![allow(dead_code, unused, incomplete_features)]
 
 use crate::basic::*;
@@ -177,6 +177,11 @@ fn display_usage() {
 }
 
 fn main() {
+    for col in column::COLUMNS {
+        println!("{}", col);
+    }
+    return;
+
     let mut args = env::args().skip(1);
     match args.next().map(|s| s.to_lowercase()).as_deref() {
         None => display_usage(),

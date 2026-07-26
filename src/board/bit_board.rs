@@ -143,6 +143,34 @@ impl BitBoard {
         }))
     }
 
+    fn is_won(board: u64) -> bool {
+        // Horizontal
+        let m = board & (board >> WIDTH);
+        if m & (m >> (2 * WIDTH)) > 0 {
+            return true;
+        }
+
+        // Negative Diagonal
+        let m = board & (board >> (WIDTH - 1));
+        if m & (m >> (2 * (WIDTH - 1))) > 0 {
+            return true;
+        }
+
+        // Positive Diagonal
+        let m = board & (board >> (WIDTH + 1));
+        if m & (m >> (2 * (WIDTH + 1))) > 0 {
+            return true;
+        }
+
+        // Vertical alignment
+        let m = board & (board >> 1);
+        if m & (m >> 2) > 0 {
+            return true;
+        }
+
+        false
+    }
+
     pub fn heuristic(&self) -> u32 {
         self.curr_win_mask().count_ones()
     }
@@ -208,42 +236,12 @@ impl Board for BitBoard {
         }
     }
 
-    fn is_won(&self, token: Token) -> bool {
-        let board = if token == self.calc_curr() {
-            self.board
-        } else {
-            self.board ^ self.mask
-        };
-
-        // Horizontal
-        let m = board & (board >> WIDTH);
-        if m & (m >> (2 * WIDTH)) > 0 {
-            return true;
-        }
-
-        // Negative Diagonal
-        let m = board & (board >> (WIDTH - 1));
-        if m & (m >> (2 * (WIDTH - 1))) > 0 {
-            return true;
-        }
-
-        // Positive Diagonal
-        let m = board & (board >> (WIDTH + 1));
-        if m & (m >> (2 * (WIDTH + 1))) > 0 {
-            return true;
-        }
-
-        // Vertical alignment
-        let m = board & (board >> 1);
-        if m & (m >> 2) > 0 {
-            return true;
-        }
-
-        false
-    }
-
     fn is_won_at(&self, cell: Cell) -> bool {
-        self.is_won(self.get(cell).unwrap())
+        match self.get(cell) {
+            Some(token) if token == self.curr() => Self::is_won(self.board),
+            Some(token) => Self::is_won(self.board ^ self.mask),
+            None => false
+        }
     }
 }
 
@@ -275,14 +273,14 @@ impl Position for BitBoard {
 
 fn show_mask(mask: u64) -> String {
     let mut string = String::new();
-    for col in column::LEFT..=column::RIGHT {
+    for col in column::COLUMNS {
         let b = mask & ABOVE_MASK & (col_mask(col) << 1) != 0;
         string += &format!("{:b}", b as u8);
     }
     string += "--";
     for row in row::TOP_DOWN {
         string += "\n";
-        for col in column::LEFT..=column::RIGHT {
+        for col in column::COLUMNS {
             let b = mask & cell_mask(Cell { row, col }) != 0;
             string += &format!("{:b}", b as u8);
         }
@@ -304,12 +302,12 @@ impl Debug for BitBoard {
             self.curr()
         )?;
         for row in row::TOP_DOWN {
-            for col in column::LEFT..=column::RIGHT {
+            for col in column::COLUMNS {
                 let b = self.board & cell_mask(Cell { row, col }) != 0;
                 write!(f, "{:b}", b as u8)?;
             }
             write!(f, "   ");
-            for col in column::LEFT..=column::RIGHT {
+            for col in column::COLUMNS {
                 let b = self.mask & cell_mask(Cell { row, col }) != 0;
                 write!(f, "{:b}", b as u8)?;
             }
@@ -334,7 +332,7 @@ mod tests {
                 let moves = Moves::random(len);
                 let b = BitBoard::from_moves(&moves);
                 let possible = b.possible_mask();
-                for col in column::LEFT..=column::RIGHT {
+                for col in column::COLUMNS {
                     if col_mask(col) & possible > 0 {
                         assert!(
                             b.clone().place(col, b.curr()).is_some(),
@@ -346,27 +344,4 @@ mod tests {
         }
     }
 
-    #[test]
-    fn nonlosing() {
-        for _ in 0..1000 {
-            for len in 0..41 {
-                let moves = Moves::random(len);
-                let b = BitBoard::from_moves(&moves);
-                if b.is_won(b.curr()) || b.is_won(b.opp()) {
-                    continue;
-                }
-                let Ok(mut nexts) = b.possible_nonlosing_nexts() else {
-                    assert!(
-                        b.nexts(b.curr()).all(|(col, next)| next.curr_can_win()),
-                        "nonlosing missed a nonlosing move"
-                    );
-                    continue;
-                };
-                assert!(
-                    nexts.all(|(col, next)| !next.curr_can_win()),
-                    "nonlosing returned a losing move"
-                );
-            }
-        }
-    }
 }

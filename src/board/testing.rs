@@ -31,7 +31,7 @@ pub mod board_tests {
 
     pub fn empty_is_empty<B: Board>(name: &str) {
         let empty = B::EMPTY;
-        for col in column::LEFT..=column::RIGHT {
+        for col in column::COLUMNS {
             for row in row::BOTTOM_UP {
                 assert!(
                     empty.get(Cell { col, row }).is_none(),
@@ -45,7 +45,7 @@ pub mod board_tests {
         let mut board = B::EMPTY;
         let mut curr = Token::STARTING;
 
-        for col in column::LEFT..=column::RIGHT {
+        for col in column::COLUMNS {
             for _ in 0..6 {
                 assert!(
                     board.can_place(col),
@@ -80,7 +80,7 @@ pub mod board_tests {
              |YYYY   |",
         );
         assert!(
-            board.is_won_at_col(column::CENTRE),
+            board.is_won_at_col(column::Idx::CENTRE),
             "`{name}::won_at returned false on a winning cell."
         );
     }
@@ -121,7 +121,7 @@ pub mod mut_board_tests {
         let mut board = B::EMPTY;
         let mut token = Token::STARTING;
         for row in row::BOTTOM_UP {
-            for col in column::LEFT..=column::RIGHT {
+            for col in column::COLUMNS {
                 let temp = board.clone();
 
                 let Some(cell) = board.place(col, token) else {

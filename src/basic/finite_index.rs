@@ -1,6 +1,5 @@
-use std::u8;
-use std::iter::Step;
 use std::ops::{Add, Sub};
+use std::u8;
 
 use rand::RngExt;
 use rand::distr::{Distribution, StandardUniform};
@@ -14,11 +13,11 @@ impl IsTrue for Assert<true> {}
 #[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd, Ord)]
 pub struct FiniteIndex<const N: usize>(usize);
 
-impl<const N: usize> FiniteIndex<N> 
-where Assert<{N > 0}> : IsTrue 
+impl<const N: usize> FiniteIndex<N>
+where Assert<{ N > 0 }>: IsTrue
 {
     pub const ZERO: FiniteIndex<N> = FiniteIndex(0);
-    pub const MAX: FiniteIndex<N> = FiniteIndex(N-1);
+    pub const MAX: FiniteIndex<N> = FiniteIndex(N - 1);
 }
 
 impl<const N: usize> FiniteIndex<N> {
@@ -27,7 +26,10 @@ impl<const N: usize> FiniteIndex<N> {
     /// Creates a FiniteIndex from a raw usize value, panicking
     /// when out of bounds.
     pub const fn raw(value: usize) -> Self {
-        debug_assert!(value < N, "FiniteIndex out of bounds error: value exceeds the maximum allowed");
+        debug_assert!(
+            value < N,
+            "FiniteIndex out of bounds error: value exceeds the maximum allowed"
+        );
         FiniteIndex(value)
     }
 
@@ -38,13 +40,13 @@ impl<const N: usize> FiniteIndex<N> {
     /// Shifts the value by the given amount,
     /// staying within bounds by capping/saturating at the edges.
     pub fn shift(&self, by: isize) -> Self {
-        FiniteIndex(self.0.saturating_add_signed(by).clamp(0, N-1))
+        FiniteIndex(self.0.saturating_add_signed(by).clamp(0, N - 1))
     }
 
     /// Adds the given amount to the value,
     /// staying within bounds by capping at the maximum.
     pub fn add_usize(&self, by: usize) -> Self {
-        FiniteIndex(self.0.saturating_add(by).min(N-1))
+        FiniteIndex(self.0.saturating_add(by).min(N - 1))
     }
 
     /// Subtracts the given amount from the value,
@@ -85,7 +87,6 @@ impl<const N: usize> FiniteIndex<N> {
     }
 }
 
-
 /*  From and TryFrom */
 impl<const N: usize> TryFrom<usize> for FiniteIndex<N> {
     type Error = String;
@@ -123,64 +124,38 @@ impl<const N: usize> From<FiniteIndex<N>> for usize {
     }
 }
 impl<const N: usize> From<FiniteIndex<N>> for u8
-where Assert<{ N <= 1<<8 }> : IsTrue
+where
+    Assert<{ N <= 1 << 8 }>: IsTrue,
 {
     fn from(value: FiniteIndex<N>) -> Self {
         u8::try_from(value.0).unwrap()
     }
 }
 impl<const N: usize> From<FiniteIndex<N>> for u32
-where Assert<{ N <= 1<<32 }> : IsTrue
+where
+    Assert<{ N <= 1 << 32 }>: IsTrue,
 {
     fn from(value: FiniteIndex<N>) -> Self {
         u32::try_from(value.0).unwrap()
     }
 }
-impl<const N: usize> From<FiniteIndex<N>> for u64
-{
+impl<const N: usize> From<FiniteIndex<N>> for u64 {
     fn from(value: FiniteIndex<N>) -> Self {
         u64::try_from(value.0).unwrap()
     }
 }
 // isize must at least be 16 bits
-impl<const N: usize> From<FiniteIndex<N>> for isize 
-where Assert<{ N <=  1<<8}> : IsTrue
+impl<const N: usize> From<FiniteIndex<N>> for isize
+where Assert<{ N <= 1 << 8 }>: IsTrue,
 {
     fn from(value: FiniteIndex<N>) -> Self {
-        isize::from(u8::from(value))    
-    }
-}
-
-impl<const N: usize> Step for FiniteIndex<N> {
-    fn steps_between(start: &Self, end: &Self) -> (usize, Option<usize>) {
-        usize::steps_between(&usize::from(*start), &usize::from(*end))
-    }
-
-    fn forward_checked(start: Self, count: usize) -> Option<Self> {
-        start.try_add_usize(count)
-    }
-
-    fn forward_overflowing(start: Self, count: usize) -> (Self, bool) {
-        match Step::forward_checked(start, count) {
-            None => (start, true),
-            Some(end) => (end, false)
-        }
-    }
-
-    fn backward_checked(start: Self, count: usize) -> Option<Self> {
-        start.try_sub_usize(count)
-    }
-
-    fn backward_overflowing(start: Self, count: usize) -> (Self, bool) {
-        match Step::backward_checked(start, count) {
-            None => (start, true),
-            Some(end) => (end, false)
-        }
+        isize::from(u8::from(value))
     }
 }
 
 impl<const N: usize> Distribution<FiniteIndex<N>> for StandardUniform
-where Assert<{N > 0}> : IsTrue {
+where Assert<{ N > 0 }>: IsTrue
+{
     fn sample<R: rand::prelude::Rng + ?Sized>(&self, rng: &mut R) -> FiniteIndex<N> {
         rng.random_range(0..N).try_into().unwrap()
     }
