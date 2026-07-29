@@ -32,9 +32,10 @@ macro_rules! make_solver_tests {
     };
 }
 
+/// Run a series of tests on the `END_EASY` testset using the given solver.
 pub fn run_easy_tests<P: Position, S: Solver<P>>(count: usize) {
     let mut boss = LaissezFaire {};
-    let mut cache = Cache::new(Cache::SMALL_SIZE);
+    let mut cache = Cache::new_small();
 
     for (moves, correct) in read_testset(END_EASY).into_iter().take(count) {
         let pos = P::from_moves(&moves);

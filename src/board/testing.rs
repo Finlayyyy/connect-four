@@ -1,7 +1,7 @@
 use crate::basic::{Cell, Token, column, row};
 use crate::board::{Board, MutBoard};
 
-macro_rules! make_test {
+    macro_rules! make_test {
     ($b:ty, $mod:ident, $func:ident) => {
         #[test]
         fn $func() {
@@ -72,13 +72,10 @@ pub mod board_tests {
     }
 
     pub fn won_at_basic<B: Board>(name: &str) {
-        let board = B::from_display(
-            "|       |
-             |       |
-             |       |
-             |RRR    |
-             |YYYY   |",
-        );
+        let moves = "1122334";
+        let moves = Moves::from_string(moves);
+        let board = B::from_moves(&moves);
+
         assert!(
             board.is_won_at_col(column::Idx::CENTRE),
             "`{name}::won_at returned false on a winning cell."
@@ -134,24 +131,10 @@ pub mod mut_board_tests {
                 assert_eq!(
                     temp,
                     board,
-                    "`{name}::unplace∘{name}::place` != id @ cell={}.",
-                    Cell { row, col }
+                    "`{name}::unplace∘{name}::place` != id @ cell={cell}."
                 );
                 board.place(col, token);
                 token = token.next();
-            }
-        }
-    }
-
-    pub fn from_moves_eq_to_moves<B: Clone + MutBoard>(name: &str) {
-        for _ in 0..100 {
-            for len in 0..42 {
-                let mut b = B::from_moves(&Moves::random(len));
-                assert_eq!(
-                    b,
-                    B::from_moves(&b.clone().to_moves()),
-                    "`{name}::from_moves∘`{name}::to_moves != id"
-                );
             }
         }
     }

@@ -1,6 +1,6 @@
 use crate::basic::*;
 use crate::board::HashBoard;
-use crate::board::{Board, CloneBoard, MutBoard, bit_col::BitCol};
+use crate::board::{Board, CloneBoard, MutBoard};
 use crate::solver_utils::Position;
 
 use std::fmt::Debug;
@@ -131,10 +131,12 @@ impl BitBoard {
     }
 
     /// Count of possible wins for the current player
+    #[inline(always)]
     pub fn curr_win_count(&self) -> u32 {
         (self.possible_mask() & self.curr_win_mask()).count_ones()
     }
     /// Can the current player win on their next move
+    #[inline(always)]
     pub fn curr_can_win(&self) -> bool {
         self.curr_win_count() > 0
     }

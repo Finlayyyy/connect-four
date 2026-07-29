@@ -1,5 +1,5 @@
 #![feature(generic_const_exprs, never_type)]
-#![allow(dead_code, unused, incomplete_features)]
+#![allow(unused_imports, dead_code, incomplete_features, unused_macros)]
 
 use crate::basic::*;
 use crate::benching::*;
@@ -65,7 +65,7 @@ fn bench_easy() {
 
 fn bench_medium() {
     println!("BENCH MEDIUM");
-    let testsets = [MIDDLE_MEDIUM, BEGIN_EASY];
+    let testsets = [MIDDLE_EASY, MIDDLE_MEDIUM, BEGIN_EASY];
     let tests = Bencher::read_testsets(&testsets, 100);
     let bencher = Bencher::new(tests, &testsets, Duration::from_secs(15));
     bench!(bencher, BitCols, MinimaxOrdered);
@@ -82,7 +82,7 @@ fn bench_hard() {
     println!("BENCH HARD");
     let testsets = [MIDDLE_MEDIUM, BEGIN_EASY, BEGIN_MEDIUM, BEGIN_HARD];
     let tests = Bencher::read_testsets(&testsets, 100);
-    let bencher = Bencher::new(tests, &testsets, Duration::from_secs(30));
+    let bencher = Bencher::new(tests, &testsets, Duration::from_secs(60));
     bench!(bencher, BitCols, Deepening<MinimaxOrdered>);
     bench!(bencher, BitCols, Deepening<MinimaxAvoidant>);
     bench!(bencher, SymmBoard, Deepening<MinimaxAvoidant>);
@@ -91,8 +91,9 @@ fn bench_hard() {
 
 fn bench_solve() {
     println!("BENCH SOLVE");
-    let tests = vec![vec![(Moves::EMPTY, 1)]];
-    let bencher = Bencher::new(tests, &["SOLVE"], Duration::from_mins(60));
+    let testsets = [BEGIN_HARD, SOLVE];
+    let tests = Bencher::read_testsets(&testsets, 100);
+    let bencher = Bencher::new(tests, &testsets, Duration::from_mins(30));
     bench!(bencher, BitBoard, Deepening<MinimaxQuick>);
 }
 
@@ -108,37 +109,44 @@ fn generate() {
 }
 
 fn display_usage() {
-    println!("usage:               \n");
-    println!("       ConnectFour [-h | --help] \n");
-    println!("       ConnectFour bench       \n");
-    println!("       ConnectFour generate    \n");
-    println!("       ConnectFour help        \n");
-    println!("       ConnectFour play        \n");
+    println!("usage:                                      \n");
+    println!("  ConnectFour [-h | --help]                 \n");
+    println!("  ConnectFour bench                         \n");
+    println!("  ConnectFour bench [easy|medium|hard|solve]\n");
+    println!("  ConnectFour generate                      \n");
+    println!("  ConnectFour help                          \n");
+    println!("  ConnectFour play                          \n");
 }
 
 fn main() {
     let mut args = env::args().skip(1);
-    match args.next().map(|s| s.to_lowercase()).as_deref() {
-        None => display_usage(),
-        Some("--help") => display_usage(),
-        Some("-h") => display_usage(),
-        Some("bench") => match args.next().map(|s| s.to_lowercase()).as_deref() {
-            None => bench(),
-            Some("easy") => bench_easy(),
-            Some("medium") => bench_medium(),
-            Some("hard") => bench_hard(),
-            Some("solve") => bench_solve(),
-            Some(cmd) => {
-                println!("Unrecognised command '{}'\n", cmd);
-                display_usage();
+    let Some(cmd) = args.next() else {
+        println!("Expected command.\n");
+        return display_usage();
+    };
+    let cmd = cmd.to_lowercase();
+    match cmd.as_str() {
+        "--help" => return display_usage(),
+        "-h" => return display_usage(),
+        "bench" => {
+            let Some(testset) = args.next() else { return bench(); };
+            match testset.as_str() {
+                "easy" => bench_easy(),
+                "medium" => bench_medium(),
+                "hard" => bench_hard(),
+                "solve" => bench_solve(),
+                cmd => {
+                    println!("Unrecognised command '{}'\n", cmd);
+                    return display_usage();
+                }
             }
         },
-        Some("generate") => generate(),
-        Some("help") => display_usage(),
-        Some("play") => play(),
-        Some(cmd) => {
+        "generate" => return generate(),
+        "help" => return display_usage(),
+        "play" => return play(),
+        cmd => {
             println!("Unrecognised command '{}'\n", cmd);
-            display_usage();
+            return display_usage();
         }
     }
 }

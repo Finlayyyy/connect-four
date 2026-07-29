@@ -57,7 +57,7 @@ impl<P: Position + CloneBoard + HashBoard> ABSolver<P> for MinimaxAvoidant {
     fn minimax<M: SolverManager>(
         pos: P,
         boss: &mut M,
-        cache: &mut Cache,
+        cache: &mut Cache<P>,
         mut alpha: isize,
         mut beta: isize,
     ) -> ControlFlow<M::Break, isize> {
@@ -65,12 +65,11 @@ impl<P: Position + CloneBoard + HashBoard> ABSolver<P> for MinimaxAvoidant {
         if pos.completed() { return ControlFlow::Continue(0); }
         let prev_alpha = alpha;
 
-        (alpha, beta) = cache.check(&pos, alpha, beta);
+        (alpha, beta) = cache.get_check(&pos, alpha, beta);
         if alpha >= beta { return ControlFlow::Continue(beta); }
 
         let mut moves = MoveSorter::<{ column::COUNT }, _, _>::new();
         let mut must_play = None;
-        let mut must_avoid = None;
         let mut will_lose = false;
 
         for cell in pos.next_cells() {
@@ -82,7 +81,7 @@ impl<P: Position + CloneBoard + HashBoard> ABSolver<P> for MinimaxAvoidant {
                 // opponent has at least two winning moves next turn, thus curr has lost.
                 MoveResult::BlockOppWin | MoveResult::ForcedOppWin => will_lose = true,
                 // Playing this move will allow opponent to win
-                MoveResult::LetOppWin => must_avoid = Some(cell.col),
+                MoveResult::LetOppWin => (),
                 // there are no immediate wins or losses
                 MoveResult::Nbhd(nbhd) => moves.push_sorting(nbhd.heuristic(), cell.col),
             }
@@ -109,12 +108,12 @@ impl<P: Position + CloneBoard + HashBoard> ABSolver<P> for MinimaxAvoidant {
             if alpha >= beta { break; }
         }
 
-        cache.check_insert(&pos, prev_alpha, alpha, beta);
+        cache.insert_check(&pos, prev_alpha, alpha, beta);
         ControlFlow::Continue(alpha)
     }
 }
 impl<P: Position + CloneBoard + HashBoard> Solver<P> for MinimaxAvoidant {
-    fn solve<M: SolverManager>(pos: P, boss: &mut M, cache: &mut Cache) -> ControlFlow<M::Break, isize> {
+    fn solve<M: SolverManager>(pos: P, boss: &mut M, cache: &mut Cache<P>) -> ControlFlow<M::Break, isize> {
         let min = pos.will_lose_score();
         let max = pos.will_win_score();
         Self::minimax(pos, boss, cache, min, max)

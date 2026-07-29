@@ -7,6 +7,7 @@ use crate::board::{CloneBoard, MutBoard};
 use crate::solver_utils::*;
 use crate::solvers::{Solver, ABSolver};
 
+/// A basic minimax solver that uses a mutable board.
 pub struct MinimaxMut { }
 impl MinimaxMut {
     fn minimax<P: Position + MutBoard, M: SolverManager>(
@@ -41,12 +42,13 @@ impl MinimaxMut {
 }
 
 impl<P: Position + MutBoard> Solver<P> for MinimaxMut {
-    fn solve<M: SolverManager>(pos: P, boss: &mut M, cache: &mut Cache) -> ControlFlow<M::Break, isize> {
+    fn solve<M: SolverManager>(pos: P, boss: &mut M, _cache: &mut Cache<P>) -> ControlFlow<M::Break, isize> {
         let mut pos = pos;
         Self::minimax(&mut pos, boss)
     }
 }
 
+/// A basic minimax solver that uses a clone board.
 pub struct MinimaxClone { }
 
 impl MinimaxClone {
@@ -75,7 +77,7 @@ impl MinimaxClone {
 }
 
 impl<P: Position + CloneBoard> Solver<P> for MinimaxClone {
-    fn solve<M: SolverManager>(pos: P, boss: &mut M, cache: &mut Cache) -> ControlFlow<M::Break, isize> {
+    fn solve<M: SolverManager>(pos: P, boss: &mut M, _cache: &mut Cache<P>) -> ControlFlow<M::Break, isize> {
         Self::minimax(pos, boss)
     }
 }

@@ -8,6 +8,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use crate::solver_utils::*;
 use crate::solvers::Solver;
 
+
+/// Extends `MinimaxClone` with alpha-beta pruning.
 pub struct MinimaxAlphaBeta {}
 impl MinimaxAlphaBeta {
     fn minimax<P: Position + CloneBoard, M: SolverManager>(
@@ -20,7 +22,7 @@ impl MinimaxAlphaBeta {
         if pos.completed() { return ControlFlow::Continue(0); }
 
         beta = min(beta, pos.will_win_score());
-        if (alpha >= beta) { return ControlFlow::Continue(beta); };
+        if alpha >= beta { return ControlFlow::Continue(beta); };
 
         for (col, next_pos) in pos.nexts(pos.curr()) {
             if next_pos.is_won_at_col(col) {
@@ -37,7 +39,7 @@ impl<P: Position + CloneBoard> Solver<P> for MinimaxAlphaBeta {
     fn solve<M: SolverManager>(
         pos: P,
         boss: &mut M,
-        cache: &mut Cache,
+        _cache: &mut Cache<P>,
     ) -> ControlFlow<M::Break, isize> {
         Self::minimax(&pos, boss, pos.will_lose_score(), pos.will_win_score())
     }

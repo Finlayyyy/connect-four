@@ -4,20 +4,10 @@ use crate::board::{Board, CloneBoard, MutBoard, bit_col::BitCol};
 use crate::solver_utils::Position;
 use std::hash::Hash;
 
-/// A board implementation using bit manipulation for storage with
-/// customised equality and hashing for symmetry.
-/// Each column is stored as a BitCol.
+/// A newtype over `BitCols` with custom equality and hash
+/// so that symmetric boards are equivalent
 #[derive(Clone, Debug)]
 pub struct SymmBoard(BitCols);
-
-impl SymmBoard {
-    fn get_col(&self, col: column::Idx) -> BitCol {
-        self.0.get_col(col)
-    }
-    fn get_cols(&self) -> &[BitCol] {
-        self.0.get_cols()
-    }
-}
 
 impl Board for SymmBoard {
     const EMPTY: Self = SymmBoard(BitCols::EMPTY);
@@ -52,15 +42,15 @@ impl MutBoard for SymmBoard {
 
 impl HashBoard for SymmBoard {
     fn key(&self) -> u64 {
-        let centre = self.get_col(column::Idx::CENTRE).to_u64();
+        let centre = self.0.get_col(column::Idx::CENTRE).to_u64();
 
         let mut left = 0;
         for col in column::LEFT_SIDE {
-            left = self.get_col(col).to_u64() | (left << 7);
+            left = self.0.get_col(col).to_u64() | (left << 7);
         }
         let mut right = 0;
         for col in column::RIGHT_SIDE.into_iter().rev() {
-            right = self.get_col(col).to_u64() | (right << 7);
+            right = self.0.get_col(col).to_u64() | (right << 7);
         }
 
         let (left, right) = if left <= right {
@@ -85,11 +75,11 @@ impl Position for SymmBoard {
 impl PartialEq for SymmBoard {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
-            || self
+            || self.0
                 .get_cols()
                 .iter()
                 .rev()
-                .zip(other.get_cols().iter())
+                .zip(other.0.get_cols().iter())
                 .all(|(a, b)| a == b)
     }
 }
@@ -98,9 +88,6 @@ impl Eq for SymmBoard {}
 
 #[cfg(test)]
 mod tests {
-    use std::hash::DefaultHasher;
-    use std::hash::Hasher;
-
     use super::*;
 
     make_board_tests!(SymmBoard);
@@ -115,7 +102,7 @@ mod tests {
             for col in column::COLUMNS {
                 board_a.place(col, token).unwrap();
                 board_b.place(col.mirrored(), token).unwrap();
-
+                token = token.next();
                 assert_eq!(board_a, board_b, "Symmetric SymmBoards are not equal");
                 assert_eq!(
                     board_a.key(),

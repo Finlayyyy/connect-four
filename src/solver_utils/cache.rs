@@ -1,31 +1,48 @@
-use crate::board::{Board, HashBoard};
+use crate::board::HashBoard;
+use crate::board::Board;
 use crate::solver_utils::{Position, position};
-use hashbrown::HashTable;
+
+use std::marker::PhantomData;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum EntryKind {
+pub enum BoundType {
     Lower,
     Upper,
     Exact,
 }
 
-impl EntryKind {
-    pub const EMPTY: u64 = 0;
-    pub const fn pack(self) -> u64 {
+impl std::ops::Neg for BoundType {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
         match self {
-            EntryKind::Lower => 0b01,
-            EntryKind::Upper => 0b10,
-            EntryKind::Exact => 0b11,
+            BoundType::Lower => BoundType::Upper,
+            BoundType::Exact => BoundType::Exact,
+            BoundType::Upper => BoundType::Lower
         }
     }
+}
 
+impl BoundType {
+    /// Bitrep of an EMPTY BoundType
+    pub const EMPTY: u64 = 0;
+
+    /// Pack into 2 bits
+    pub const fn pack(self) -> u64 {
+        match self {
+            BoundType::Lower => 0b01,
+            BoundType::Upper => 0b10,
+            BoundType::Exact => 0b11,
+        }
+    }
+    /// Try to unpack the 2 lowest bits into an BoundType
     pub const fn unpack(entry: u64) -> Option<Self> {
         match entry {
             0b00 => None,
-            0b01 => Some(EntryKind::Lower),
-            0b10 => Some(EntryKind::Upper),
-            0b11 => Some(EntryKind::Exact),
-            _ => panic!("Invalid packed EntryKind"),
+            0b01 => Some(BoundType::Lower),
+            0b10 => Some(BoundType::Upper),
+            0b11 => Some(BoundType::Exact),
+            _ => panic!("Invalid packed BoundType"),
         }
     }
 }
@@ -34,150 +51,188 @@ impl EntryKind {
 struct Entry(u64);
 
 impl Entry {
-    const KIND_BITS: u64 = 2;
+    const BOUND_BITS: u64 = 2;
     const KEY_BITS: u64 = 49;
     const SCORE_BITS: u64 = 6;
     const DEPTH_BITS: u64 = 6;
 
-    const KIND_MASK: u64 = (1 << Self::KIND_BITS) - 1;
+    const BOUND_MASK: u64 = (1 << Self::BOUND_BITS) - 1;
     const KEY_MASK: u64 = (1 << Self::KEY_BITS) - 1;
     const SCORE_MASK: u64 = (1 << Self::SCORE_BITS) - 1;
     const DEPTH_MASK: u64 = (1 << Self::DEPTH_BITS) - 1;
 
-    const KEY_OFFSET: u64 = Self::KIND_BITS;
+    const KEY_OFFSET: u64 = Self::BOUND_BITS;
     const SCORE_OFFSET: u64 = Self::KEY_BITS + Self::KEY_OFFSET;
     const DEPTH_OFFSET: u64 = Self::SCORE_BITS + Self::SCORE_OFFSET;
 
-    pub const EMPTY: Self = Entry(EntryKind::EMPTY);
+    /// An empty entry
+    pub const EMPTY: Self = Entry(BoundType::EMPTY);
 
-    pub fn pack(kind: EntryKind, key: u64, score: isize, depth: usize) -> Self {
-        let kind = kind.pack();
-        debug_assert!(kind & (!Self::KIND_MASK) == 0);
+    /// Pack the inputs into a single Entry (u64)
+    pub fn pack(bound: BoundType, key: u64, score: isize, depth: usize) -> Self {
+        let bound = bound.pack();
+        debug_assert!(bound & (!Self::BOUND_MASK) == 0);
         debug_assert!(key & (!Self::KEY_MASK) == 0);
         let score = u64::try_from(score - position::MIN_SCORE).unwrap();
         debug_assert!(score & (!Self::SCORE_MASK) == 0);
         let depth = u64::try_from(depth).unwrap();
         debug_assert!(depth & (!Self::DEPTH_MASK) == 0);
 
-        Entry(kind | (key << Self::KEY_OFFSET) | (score << Self::SCORE_OFFSET) | (depth << Self::DEPTH_OFFSET))
+        Entry(bound | (key << Self::KEY_OFFSET) | (score << Self::SCORE_OFFSET) | (depth << Self::DEPTH_OFFSET))
     }
 
-    pub fn unpack(&self) -> Option<(EntryKind, u64, isize, usize)> {
-        let mut entry = self.0;
-        let kind = EntryKind::unpack(entry & Self::KIND_MASK)?;
+    /// Unpack the Entry and return the orignal elements
+    pub fn unpack(&self) -> Option<(BoundType, u64, isize, usize)> {
+        let entry = self.0;
+        let bound = BoundType::unpack(self.0 & Self::BOUND_MASK)?;
         let key = (entry >> Self::KEY_OFFSET) & Self::KEY_MASK;
         let score = (entry >> Self::SCORE_OFFSET) & Self::SCORE_MASK;
         let score = isize::try_from(score).unwrap() + position::MIN_SCORE;
         let depth = (entry >> Self::DEPTH_OFFSET) & Self::DEPTH_MASK;
         let depth = usize::try_from(depth).unwrap();
-        Some((kind, key, score, depth))
-    }
-
-    pub fn is_superior_to(&self, other: Entry) -> bool {
-        return true;
-        let Some((kind, key, score, depth)) = self.unpack() else {
-            return false; // An empty entry is not superior
-        };
-        let Some((other_kind, other_key, other_score, other_depth)) = other.unpack() else {
-            return true; // Non-empty is superior to empty
-        };
-
-        if key == other_key { true }
-        else { (depth < other_depth + 4) }
+        Some((bound, key, score, depth))
     }
 }
 
-pub struct Cache {
+/// Transposition Table Cache
+/// Can store a HashBoard with a key of at most 49 bits
+pub struct Cache<B> {
     table: Vec<Entry>,
     max_count: u64,
+    pd: PhantomData<B>
 }
-
-impl Cache {
+impl<B> Cache<B> {
     /// Very large prime number for hash table size
     /// * sizeof::<u64>() = ~400MB
-    pub const LARGE_SIZE: usize = 50331653;
+    const LARGE_SIZE: usize = 50331653;
 
     // Relatively small prime number for smaller hash table
     // * sizeof::<u64>() = ~2MB
-    pub const SMALL_SIZE: usize = 393241;
+    const SMALL_SIZE: usize = 393241;
 
     const MAX_CACHE_DEPTH: usize = position::MAX_MOVES - 5;
 
-    pub fn new(max_count: usize) -> Self {
+    /// Construct a new cache with the given amount
+    /// of space
+    pub fn new(size: usize) -> Self {
         Cache {
-            table: vec![Entry::EMPTY; max_count],
-            max_count: max_count as u64,
+            table: vec![Entry::EMPTY; size],
+            max_count: size as u64,
+            pd: PhantomData
         }
     }
 
+    /// Construct a new cache with a large amount
+    /// of space.
+    pub fn new_large() -> Self { Self::new(Self::LARGE_SIZE) }
+
+    /// Construct a new cache with a small amount
+    /// of space.
+    pub fn new_small() -> Self { Self::new(Self::SMALL_SIZE) }
+
+    /// Clear the table by filling it with EMPTY entries
+    pub fn clear(&mut self) {
+        self.table.fill(Entry::EMPTY);
+    }
+
+    /// The size of the table in bytes
+    pub fn size_of(&self) -> usize {
+        size_of::<Entry>() * self.table.len()
+    }
+}
+
+
+impl<B: HashBoard + Position> Cache<B> {
+    /// Hash the given key into an index into
+    /// the inner table
     fn hash(&self, key: u64) -> usize {
         (key % self.max_count) as usize
     }
 
-    /// MIN_SCORE <= score <= MAX_SCORE
-    pub fn insert<B: HashBoard + Position>(&mut self, kind: EntryKind, board: &B, score: isize) {
-        if board.move_count() > Self::MAX_CACHE_DEPTH { return; }
-
-        let key = board.key();
-        let depth = board.move_count();
-        let entry = Entry::pack(kind, key, score, depth);
-
-        let hash = self.hash(key);
-        if entry.is_superior_to(self.table[hash]) {
-            self.table[hash] = entry;
-        }
-    }
-
-    pub fn get<B: HashBoard>(&self, board: &B) -> Option<(EntryKind, isize)> {
+    /// Tries to get the entry corresponding to the given board,
+    /// returning `None` if it doesn't exist, `Some(bound_type, score)`
+    /// otherwise.
+    pub fn get(&self, board: &B) -> Option<(BoundType, isize)> {
         let key = board.key();
         let hash = self.hash(key);
         let entry = self.table[hash];
-        let (kind, other_key, score, _) = entry.unpack()?;
+        let (bound, other_key, score, _) = entry.unpack()?;
         match key == other_key {
-            true => Some((kind, score)),
+            true => Some((bound, score)),
             false => None,
         }
     }
 
-    pub fn check<B: HashBoard>(&self, board: &B, alpha: isize, beta: isize) -> (isize, isize) {
+    /// Search the cache for an entry for board and, if found,
+    /// update the given bounds and return them as (alpha, beta)
+    pub fn get_check(&self, board: &B, alpha: isize, beta: isize) -> (isize, isize) {
         match self.get(board) {
-            Some(((EntryKind::Lower), score)) if score > alpha => (score, beta),
-            Some(((EntryKind::Upper), score)) if score < beta => (alpha, score),
-            Some((EntryKind::Exact, score)) => (score, score),
+            Some((BoundType::Lower, score)) if score > alpha => (score, beta),
+            Some((BoundType::Upper, score)) if score < beta => (alpha, score),
+            Some((BoundType::Exact, score)) => (score, score),
             _ => (alpha, beta)
         }
     }
 
-    pub fn check_insert<B: HashBoard + Position>(
+    /// Given a hash collision with pre-existing entry and a new entry,
+    /// choose which entry should take the place.
+    fn choose_entry(old: Entry, new: Entry) -> Entry {
+        let Some((old_bound, old_key, old_score, _)) = old.unpack() else {
+            return new;
+        };
+        let Some((new_bound, new_key, new_score, new_depth)) = new.unpack() else {
+            return old;
+        };
+
+        if old_key != new_key { return new; } // old board not relevant
+        if old_bound == BoundType::Exact { return old; }
+        if new_bound == BoundType::Exact { return new; }
+
+        if old_bound == -new_bound && old_score == new_score {
+            return Entry::pack(BoundType::Exact, new_key, new_score, new_depth);
+        }
+
+        new
+    }
+
+    /// Insert the board into the cache with bound type and score.
+    /// MIN_SCORE <= score <= MAX_SCORE
+    pub fn insert(&mut self, bound: BoundType, board: &B, score: isize) {
+        if board.move_count() > Self::MAX_CACHE_DEPTH { return; }
+
+        let key = board.key();
+        let depth = board.move_count();
+        let entry = Entry::pack(bound, key, score, depth);
+
+        let hash = self.hash(key);
+        let entry = Self::choose_entry(self.table[hash], entry);
+        self.table[hash] = entry;
+    }
+
+    /// Given a board with an initial alpha, best score (updated alpha)
+    /// and beta bound, inserts an entry into the hash table with the
+    /// appropriate bound type.
+    pub fn insert_check(
         &mut self,
         board: &B,
         prev_alpha: isize,
         best: isize,
         beta: isize,
     ) {
-        let kind = if best <= prev_alpha {
-            EntryKind::Upper
+        let bound = if best <= prev_alpha {
+            BoundType::Upper
         } else if best >= beta {
-            EntryKind::Lower
+            BoundType::Lower
         } else {
-            EntryKind::Exact
+            BoundType::Exact
         };
-        self.insert(kind, board, best);
-    }
-
-    pub fn clear(&mut self) {
-        self.table.fill(Entry::EMPTY);
-    }
-
-    pub fn allocation_size(&self) -> usize {
-        size_of::<u64>() * usize::try_from(self.max_count).unwrap()
+        self.insert(bound, board, best);
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::basic::*;
     use crate::benching::{END_EASY, read_testset};
     use crate::board::*;
 
@@ -185,12 +240,12 @@ mod tests {
     fn pack_unpack() {
         let testset = read_testset(END_EASY);
         for (moves, score) in testset {
-            let kind = EntryKind::Exact;
+            let bound = BoundType::Exact;
             let board = BitCols::from_moves(&moves);
             let key = board.key();
             let depth = board.move_count();
-            let entry = Entry::pack(kind, key, score, depth);
-            let (kind_2, key_2, score_2, depth_2) = entry.unpack().unwrap();
+            let entry = Entry::pack(bound, key, score, depth);
+            let (_kind_2, key_2, score_2, depth_2) = entry.unpack().unwrap();
             assert_eq!(key, key_2, "(unpack∘pack)(key) != key for {key}");
             assert_eq!(score, score_2, "(unpack∘pack)(score) != score for {score}");
             assert_eq!(depth, depth_2, "(unpack∘pack)(depth) != depth for {depth}");

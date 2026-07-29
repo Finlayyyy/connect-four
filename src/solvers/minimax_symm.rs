@@ -10,39 +10,15 @@ use std::cmp::{max, min};
 use std::hash::Hash;
 use std::ops::ControlFlow;
 
-/// Type to store the difference in height of each column with its reflection,
-/// to efficiently compute when board is symmetrical.
-///
-/// i.e. symm_diff[i] = column[6-i].height() - column[i].height()
-type SymmDiff = [isize; 3];
-
-/// Creates a SymmDiffs for the given board.
-/// Returns None if the board is irreversably asymmetrical.
-fn make_diffs<B: Board>(board: &B) -> Option<SymmDiff> {
-    let mut diffs = [0; 3];
-    for i in 0..3 {
-        let col_l = column::Idx::try_from(i).unwrap();
-        let col_r = col_l.mirrored();
-        for row in row::BOTTOM_UP {
-            let left = board.get(Cell { col: col_l, row });
-            let right = board.get(Cell { col: col_r, row });
-            if left != right {
-                return None;
-            }
-        }
-        diffs[i] = board.col_count(col_r) as isize - board.col_count(col_l) as isize;
-    }
-
-    Some(diffs)
-}
-
+/// Solver that extends `MinimaxABCached` to use symmetry to
+/// reduce the search space
 pub struct MinimaxSymm { }
 
 impl MinimaxSymm {
     fn minimax<P: Position + CloneBoard + HashBoard, M: SolverManager>(
         pos: P,
         boss: &mut M,
-        cache: &mut Cache,
+        cache: &mut Cache<P>,
         mut alpha: isize,
         mut beta: isize,
         diffs: SymmDiff,
@@ -52,10 +28,10 @@ impl MinimaxSymm {
         let prev_alpha = alpha;
 
         beta = min(beta, pos.will_win_score());
-        (alpha, beta) = cache.check(&pos, alpha, beta);
+        (alpha, beta) = cache.get_check(&pos, alpha, beta);
         if alpha >= beta { return ControlFlow::Continue(beta); }
 
-        for (diffs, col, next_pos) in next_boards(&pos, diffs) {
+        for (diffs, col, next_pos) in diffs.nexts(&pos) {
             if next_pos.is_won_at_col(col) {
                 alpha = next_pos.just_won_score();
                 break;
@@ -69,7 +45,7 @@ impl MinimaxSymm {
             if alpha >= beta { break; }
         }
 
-        cache.check_insert(&pos, prev_alpha, alpha, beta);
+        cache.insert_check(&pos, prev_alpha, alpha, beta);
         ControlFlow::Continue(alpha)
     }
 }
@@ -78,62 +54,90 @@ impl<P: Position + CloneBoard + HashBoard> Solver<P> for MinimaxSymm {
     fn solve<M: SolverManager>(
         pos: P,
         boss: &mut M,
-        cache: &mut Cache,
+        cache: &mut Cache<P>,
     ) -> ControlFlow<M::Break, isize> {
         let alpha = pos.will_lose_score();
         let beta = pos.will_win_score();
-        match make_diffs(&pos) {
+        match SymmDiff::new(&pos) {
             None => MinimaxABCached::solve(pos, boss, cache),
             Some(diffs) => Self::minimax(pos, boss, cache, alpha, beta, diffs),
         }
     }
 }
 
-/// Updates the given diff considering the token from the prev move.
-/// Returns None if the board is irreversibly asymmetrical
-fn next_diffs<B: Board>(board: &B, col: column::Idx, diffs: SymmDiff) -> Option<SymmDiff> {
-    if col == column::Idx::CENTRE {
-        return Some(diffs);
+
+/// Type to store the difference in height of each column with its reflection,
+/// to efficiently compute when a board is symmetrical.
+///
+/// i.e. symm_diff[i] = column[6-i].height() - column[i].height()
+#[derive(Debug, Clone, Copy)]
+struct SymmDiff([isize; 3]);
+
+impl SymmDiff {
+    /// Creates a SymmDiffs for the given board.
+    /// Returns None if the board is irreversably asymmetrical.
+    pub fn new<B: Board>(board: &B) -> Option<Self> {
+        let mut diffs = [0; 3];
+        for col_l in column::LEFT_SIDE {
+            let col_r = col_l.mirrored();
+            for row in row::BOTTOM_UP {
+                let left = board.get(Cell { col: col_l, row });
+                let right = board.get(Cell { col: col_r, row });
+                if left != right {
+                    return None;
+                }
+            }
+            let count_l = board.col_count(col_l) as isize;
+            let count_r = board.col_count(col_r) as isize;
+            diffs[usize::from(col_l)] = count_r - count_l;
+        }
+
+        Some(SymmDiff(diffs))
     }
 
-    let mut new_diffs = diffs;
-    let cell = board.top(col).unwrap();
-    let token = board.get(cell)?;
-    let cell_c = cell.mirrored();
+    /// Updates the given diff considering the token from the prev move.
+    /// Returns None if the board is irreversibly asymmetrical
+    pub fn next<B: Board>(self, board: &B, col: column::Idx) -> Option<Self> {
+        if col == column::Idx::CENTRE {
+            return Some(self);
+        }
 
-    if let Some(token_c) = board.get(cell_c)
-        && token != token_c
-    {
-        return None;
+        let mut new_diffs = self;
+        let cell = board.top(col).unwrap();
+        let token = board.get(cell)?;
+        let cell_c = cell.mirrored();
+
+        if let Some(token_c) = board.get(cell_c) && token != token_c {
+            return None;
+        }
+
+        if cell.col.is_left_side() {
+            new_diffs.0[usize::from(cell.col)] -= 1;
+        } else {
+            new_diffs.0[usize::from(cell_c.col)] += 1;
+        }
+
+        Some(new_diffs)
     }
 
-    if cell.col.is_left_side() {
-        new_diffs[usize::from(cell.col)] -= 1;
-    } else {
-        new_diffs[usize::from(cell_c.col)] += 1;
-    }
-
-    Some(new_diffs)
-}
-
-fn next_boards<P: Position + CloneBoard>(
-    pos: &P,
-    diffs: SymmDiff,
-) -> Vec<(Option<SymmDiff>, column::Idx, P)> {
-    match diffs {
-        [0, 0, 0] => column::LEFT_SIDE
-            .into_iter()
-            .chain(once(column::Idx::CENTRE))
-            .filter_map(|col| {
-                let pos = pos.placed(col, pos.curr())?;
-                Some((col, pos))
-            })
-            .map(|(col, pos)| (next_diffs(&pos, col, diffs), col, pos))
-            .collect(),
-        _ => pos
-            .nexts(pos.curr())
-            .map(|(col, pos)| (next_diffs(&pos, col, diffs), col, pos))
-            .collect(),
+    /// Returns the next positions from the given position,
+    /// with their corresponding `SymmDiff`s
+    fn nexts<P: Position + CloneBoard>(self, pos: &P) -> Vec<(Option<SymmDiff>, column::Idx, P)> {
+        match self.0 {
+            [0, 0, 0] => column::LEFT_SIDE
+                .into_iter()
+                .chain(once(column::Idx::CENTRE))
+                .filter_map(|col| {
+                    let pos = pos.placed(col, pos.curr())?;
+                    Some((col, pos))
+                })
+                .map(|(col, pos)| (self.clone().next(&pos, col), col, pos))
+                .collect(),
+            _ => pos
+                .nexts(pos.curr())
+                .map(|(col, pos)| (self.clone().next(&pos, col), col, pos))
+                .collect(),
+        }
     }
 }
 

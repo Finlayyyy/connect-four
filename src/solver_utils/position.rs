@@ -1,13 +1,18 @@
 use crate::basic::*;
 use crate::board::*;
 
+/// Maximum possible number of moves in a game
 pub const MAX_MOVES: usize = column::COUNT * row::COUNT;
+/// Minimum possible position score
 pub const MIN_SCORE: isize = -(MAX_MOVES as isize) / 2 + 3;
+/// Maximum possible position score
 pub const MAX_SCORE: isize = (MAX_MOVES as isize + 1) / 2 - 3;
 
 pub trait Position: Board {
+    /// Number of moves made in the game
     fn move_count(&self) -> usize;
 
+    /// Has the game run out of empty cells?
     #[inline(always)]
     fn completed(&self) -> bool {
         self.move_count() == MAX_MOVES
@@ -19,8 +24,7 @@ pub trait Position: Board {
         ((MAX_MOVES + 1 - self.move_count()) / 2) as isize
     }
 
-    /// Score if the opponents next move will let
-    /// them win.
+    /// Score if the opponent will win on their next move
     fn will_lose_score(&self) -> isize {
         -((MAX_MOVES - self.move_count()) as isize / 2)
     }
@@ -31,27 +35,48 @@ pub trait Position: Board {
         ((MAX_MOVES + 2 - self.move_count()) / 2) as isize
     }
 
-    fn curr(&self) -> Token;
+    /// Current player's token
+    fn curr(&self) -> Token {
+        match self.move_count() % 2 {
+            0 => Token::STARTING,
+            1 => Token::SECOND,
+            _ => unreachable!()
+        }
+    }
 
+    /// Opponent's token
     fn opp(&self) -> Token {
         !self.curr()
     }
 
+    /// Place the current player's token in the given column
     fn place_curr(&mut self, col: column::Idx) -> Option<Cell> {
         self.place(col, self.curr())
     }
 }
 
+/// A wrapper around a board that tracks
+/// the number of moves made so far for quicker
+/// computation
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct WithInfo<B> {
     board: B,
     move_count: usize,
 }
+
 impl<B: Board> Board for WithInfo<B> {
     const EMPTY: Self = WithInfo {
         board: B::EMPTY,
         move_count: 0,
     };
+
+    fn count_moves(&self) -> usize {
+        self.move_count
+    }
+
+    fn calc_curr(&self) -> Token {
+        self.curr()
+    }
 
     fn get(&self, cell: Cell) -> Option<Token> {
         self.board.get(cell)
@@ -86,12 +111,5 @@ impl<B: HashBoard> HashBoard for WithInfo<B> {
 impl<B: Board> Position for WithInfo<B> {
     fn move_count(&self) -> usize {
         self.move_count
-    }
-    fn curr(&self) -> Token {
-        match self.move_count % 2 {
-            0 => Token::STARTING,
-            1 => Token::SECOND,
-            _ => unreachable!()
-        }
     }
 }

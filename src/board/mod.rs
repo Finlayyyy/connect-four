@@ -1,7 +1,5 @@
 use crate::basic::*;
-
-use rand::RngExt;
-use std::fmt::{Debug, Display};
+use std::fmt::Debug;
 
 #[macro_use]
 pub mod testing;
@@ -23,6 +21,8 @@ pub trait Board: Debug + Sized + Eq {
     /// An empty starting board.
     const EMPTY: Self;
 
+    /// Is the current board empty
+    #[inline(always)]
     fn is_empty(&self) -> bool {
         *self == Self::EMPTY
     }
@@ -31,6 +31,8 @@ pub trait Board: Debug + Sized + Eq {
     fn get(&self, cell: Cell) -> Option<Token>;
 
     /// Compute the current player based on the number of tokens on the board.
+    /// Warning: default implementation is slow
+    #[inline(always)]
     fn calc_curr(&self) -> Token {
         match self.count_moves() % 2 {
             0 => Token::STARTING,
@@ -40,21 +42,23 @@ pub trait Board: Debug + Sized + Eq {
     }
 
     /// Compute the total number of moves played.
+    /// Warning: default implementation is slow
     fn count_moves(&self) -> usize {
         let mut count = 0;
         for row in row::BOTTOM_UP {
             for col in column::COLUMNS {
                 let cell = Cell { col, row };
-                match self.get(cell) {
-                    Some(_) => count += 1,
-                    None => {}
+                if self.get(cell).is_some() {
+                    count += 1
                 }
+
             }
         }
         count
     }
 
-    /// Compute the count of tokens in the given column
+    /// Compute the count of tokens in the given column.
+    /// Warning: default implementation is slow
     fn col_count(&self, col: column::Idx) -> usize {
         let mut height = 0;
         for row in row::BOTTOM_UP {
@@ -75,8 +79,12 @@ pub trait Board: Debug + Sized + Eq {
 
     /// Returns true if a token can be placed in the given column.
     /// i.e. the column is not full.
-    fn can_place(&self, col: column::Idx) -> bool;
+    fn can_place(&self, col: column::Idx) -> bool {
+        self.col_count(col) < row::COUNT
+    }
 
+    /// Returns an iterator over every possible next move.
+    /// Ordered by `column::CENTRED`.
     fn next_cells(&self) -> impl Iterator<Item = Cell> {
         column::CENTRED.into_iter().filter_map(|col| {
             let row = row::Idx::try_from(self.col_count(col)).ok()?;
@@ -86,6 +94,7 @@ pub trait Board: Debug + Sized + Eq {
     /// Force places the given token in the given column.
     /// Must ensure the column is not full before (i.e. by checking `can_place`)
     /// `token` should equal the current player, as given by `curr_player`.
+    /// Panics if the column is full.
     fn force_place(&mut self, col: column::Idx, token: Token) {
         debug_assert!(self.can_place(col));
         self.place(col, token).unwrap();
@@ -106,10 +115,12 @@ pub trait Board: Debug + Sized + Eq {
 
     /// For a given column and token,
     /// calculate the length of same-colour tokens in each (relevant) direction
-    /// (left, right, down, left-down, right-down) if that token *were* placed in that cell.
-    /// Returns `None` if a win is found (a row of four), else
-    /// Some((count of adjacent pairs, count of adjacent triples))
+    /// (left, right, down, left-down, right-down) if that token *were* placed
+    /// in that cell.
+    /// Returns `None` if a possible win is found (a row of four), else
+    /// `Some((adjacent_pair_count, adjacent_triple_count))`
     fn count_adjacent_around(&self, cell: Cell, token: Token) -> Option<(usize, usize)> {
+        // count of matching tokens in the given direction, *including* the given token.
         let count = |dir| {
             cell.nbhd_in(dir)
                 .take_while(|&(_, other)| self.get(other) == Some(token))
@@ -121,6 +132,9 @@ pub trait Board: Debug + Sized + Eq {
 
         let mut pairs = 0;
         let mut triples = 0;
+        // Consider the given calculated run count,
+        // mutating pairs/triples as necessary and returning
+        // None if a win is found.
         let mut consider = |count| match count {
             0 => unreachable!(),
             1 => Some(()),
@@ -140,19 +154,22 @@ pub trait Board: Debug + Sized + Eq {
     }
 
     /// Checks there is a win (a sequence of four same-colour tokens) that includes the token
-    /// at the given Cell. The winning player is given by the colour of the token at the cell.
+    /// at the given cell. The winning player is given by the colour of the token at the cell.
     /// Panics if the column is empty.
     fn is_won_at(&self, cell: Cell) -> bool {
         let token = self.get(cell).unwrap();
         self.count_adjacent_around(cell, token).is_none()
     }
 
+    /// Checks if there is a win(sequence fo four same-colour tokens) that includes the token
+    /// at the top of the given column.
+    /// Panics if the column is empty.
     fn is_won_at_col(&self, col: column::Idx) -> bool {
         let cell = self.top(col).unwrap();
         self.is_won_at(cell)
     }
 
-    /// String pretty display
+    /// Pretty display to string
     fn to_display(&self) -> String {
         let mut string = String::new();
 
@@ -163,7 +180,7 @@ pub trait Board: Debug + Sized + Eq {
                 match self.get(cell) {
                     Some(Token::B) => string.push('O'),
                     Some(Token::A) => string.push('X'),
-                    None => string.push('.'),
+                    None => string.push('⋅'),
                 }
             }
             string.push_str("|\n");
@@ -178,33 +195,22 @@ pub trait Board: Debug + Sized + Eq {
     }
 
     /// Read a board from a visual string representation.
-    /// e.g.
-    /// |...R...|
-    /// |...Y...|
-    /// |...R...|
-    /// |...Y...|
-    /// |...R...|
-    /// |.RYYRY.|
     fn from_display(string: &str) -> Self {
         let mut board = Self::EMPTY;
         for line in string.split('|').rev() {
-            if line.trim().is_empty() {
+            if !line.chars().any(|ch| matches!(ch, 'A' | 'B' | 'X' | 'O' )){
                 continue;
             }
-            debug_assert_eq!(line.len(), 7);
 
-            for (i, ch) in line.chars().enumerate() {
+            for (ch, col) in line.chars().zip(column::COLUMNS) {
                 let token = match ch {
-                    'Y' => Token::A,
-                    'X' => Token::A,
-                    'R' => Token::B,
-                    'O' => Token::B,
-                    '.' | ' ' => continue,
-                    '+' | '-' => return board, // end of board representation
-                    _ => panic!("Invalid character in board string: {}", ch),
+                    'A' | 'X' => Token::A,
+                    'B' | 'O' => Token::B,
+                    '⋅' | ' ' => continue,
+                    '+' | '-' => break,
+                    ch => panic!("Invalid character in board string: '{}'", ch),
                 };
-                let cell = board.place(column::Idx::try_from(i).unwrap(), token);
-                debug_assert!(cell.is_some());
+                board.place(col, token);
             }
         }
 
@@ -241,7 +247,7 @@ pub trait CloneBoard: Board + Clone {
 
     /// Returns an iterator over every possible subsequent board state
     /// after placing the given token in each non-full column.
-    /// Ordered by column::INDEXES_CENTRED.
+    /// Ordered by `column::CENTRED`.
     fn nexts(&self, token: Token) -> impl Iterator<Item = (column::Idx, Self)> {
         // a simple optimisation to try the centre columns first
         column::CENTRED.iter().filter_map(move |&col| {
@@ -250,11 +256,13 @@ pub trait CloneBoard: Board + Clone {
         })
     }
 
+    /// Is there a possible winning move for the given token
     fn can_win(&self, token: Token) -> bool {
         self.nexts(token).any(|(col, board)| board.is_won_at_col(col))
     }
 
-    // Horizontal reflection by copying each cell to its mirrored position
+    /// Horizontal reflection by copying each cell to its mirrored position
+    /// based on vertical symmetry.
     fn mirrored(&self) -> Self {
         let mut board = Self::EMPTY;
         for col in column::COLUMNS {
@@ -264,7 +272,6 @@ pub trait CloneBoard: Board + Clone {
                 }
             }
         }
-
         board
     }
 }
@@ -275,30 +282,6 @@ pub trait MutBoard: Board {
     /// Removes the token at the given cell, modifying the board in place.
     /// Does not check if there is a token at the cell.
     fn unplace(&mut self, col: column::Idx);
-
-    /// To a sequence of moves
-    fn to_moves(self) -> Moves {
-        todo!();
-        let mut board = self;
-        let mut moves = vec![];
-        let mut prev = board.calc_curr().prev();
-        'outer: while !board.is_empty() {
-            for col in column::COLUMNS {
-                let Some(cell) = board.top(col) else { continue };
-                if board.get(cell).unwrap() == prev {
-                    moves.push((col, prev));
-                    board.unplace(col);
-                    prev = prev.prev();
-                    continue 'outer;
-                }
-            }
-            println!("{}", prev);
-            board.display();
-            panic!("Invalid board to represent as alternating moves");
-        }
-        moves.reverse();
-        Moves { moves }
-    }
 }
 
 pub trait HashBoard: Board {

@@ -8,6 +8,8 @@ use crate::board::{Board, CloneBoard, HashBoard, MutBoard};
 use crate::solver_utils::*;
 use crate::solvers::{ABSolver, Solver};
 
+/// A solver that wraps an alpha-beta solver that uses
+/// iterative deepening
 pub struct Deepening<S> {
     inner: S,
 }
@@ -20,7 +22,7 @@ where
     fn solve<M: SolverManager>(
         pos: P,
         boss: &mut M,
-        cache: &mut Cache,
+        cache: &mut Cache<P>,
     ) -> ControlFlow<M::Break, isize> {
         if pos.can_win(pos.curr()) {
             return ControlFlow::Continue(pos.will_win_score());

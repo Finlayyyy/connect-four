@@ -30,23 +30,26 @@ pub use minimax_symm::MinimaxSymm;
 
 use crate::solver_utils::*;
 
+/// A trait for solvers.
+/// May or may not use a cache.
 pub trait Solver<P> {
-    fn solve<M: SolverManager>(pos: P, boss: &mut M, cache: &mut Cache) -> ControlFlow<M::Break, isize>;
+    fn solve<M: SolverManager>(pos: P, boss: &mut M, cache: &mut Cache<P>) -> ControlFlow<M::Break, isize>;
 
     fn just_solve(pos: P) -> isize {
         let mut boss = LaissezFaire { };
-        let mut cache = Cache::new(Cache::SMALL_SIZE);
+        let mut cache = Cache::new_small();
         match Self::solve(pos, &mut boss, &mut cache) {
             ControlFlow::Continue(score) => score
         }
     }
 }
 
+/// A subtrait of `Solver` that uses alpha-beta pruning.
 pub trait ABSolver<P>: Solver<P> {
     fn minimax<M: SolverManager>(
         pos: P,
         boss: &mut M,
-        cache: &mut Cache,
+        cache: &mut Cache<P>,
         alpha: isize,
         beta: isize,
     ) -> ControlFlow<M::Break, isize>;

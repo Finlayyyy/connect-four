@@ -3,18 +3,23 @@ use crate::board::HashBoard;
 use crate::board::{Board, CloneBoard, MutBoard, bit_col::BitCol};
 use crate::solver_utils::Position;
 
-/// A board implementation using bit manipulation for storage.
-/// Each column is stored as a BitCol.
+/// A board implementation using bit manipulation on the column level.
+/// Represents the board as an array of `BitCol`s
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BitCols {
     cols: [BitCol; column::COUNT],
 }
 
 impl BitCols {
+    /// Returns the `BitCol` at the given index
+    #[inline(always)]
     pub fn get_col(&self, col: column::Idx) -> BitCol {
         self.cols[usize::from(col)]
     }
 
+    /// Returns a slice into the inner array of
+    /// `BitCol`s
+    #[inline(always)]
     pub fn get_cols(&self) -> &[BitCol] {
         &self.cols
     }
@@ -25,6 +30,7 @@ impl Board for BitCols {
         cols: [BitCol::EMPTY; column::COUNT],
     };
 
+    #[inline(always)]
     fn get(&self, cell: Cell) -> Option<Token> {
         self.get_col(cell.col).get(cell.row)
     }
@@ -33,14 +39,17 @@ impl Board for BitCols {
         self.cols.iter().map(|col| col.count()).sum()
     }
 
+    #[inline(always)]
     fn col_count(&self, col: column::Idx) -> usize {
         self.get_col(col).count()
     }
 
+    #[inline(always)]
     fn can_place(&self, col: column::Idx) -> bool {
         !self.get_col(col).is_full()
     }
 
+    #[inline(always)]
     fn force_place(&mut self, col: column::Idx, token: Token) {
         let col_idx = usize::from(col);
         self.cols[col_idx].force_push(token);
@@ -51,7 +60,7 @@ impl Board for BitCols {
         self.cols[col_idx] = self.cols[col_idx].pushed(token)?;
         Some(Cell {
             col,
-            row: self.get_col(col).top().unwrap(), // todo! Should unwrap or no?
+            row: self.get_col(col).top().unwrap(),
         })
     }
 }
@@ -75,9 +84,11 @@ impl HashBoard for BitCols {
 }
 
 impl Position for BitCols {
+    #[inline(always)]
     fn move_count(&self) -> usize {
         self.count_moves()
     }
+    #[inline(always)]
     fn curr(&self) -> Token {
         self.calc_curr()
     }
@@ -86,7 +97,6 @@ impl Position for BitCols {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     make_board_tests!(BitCols);
     make_mut_board_tests!(BitCols);
 }

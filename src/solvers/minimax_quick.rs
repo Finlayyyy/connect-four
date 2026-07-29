@@ -6,13 +6,15 @@ use crate::board::{BitBoard, Board, CloneBoard, HashBoard, MutBoard};
 use crate::solver_utils::*;
 use crate::solvers::{Solver, ABSolver};
 
+/// A solver that extends `MinimaxABCached` and relies on `BitBoard`
+/// being able to quickly calculate possible non-losing next moves.
 pub struct MinimaxQuick { }
 
 impl ABSolver<BitBoard> for MinimaxQuick {
     fn minimax<M: SolverManager>(
         pos: BitBoard,
         boss: &mut M,
-        cache: &mut Cache,
+        cache: &mut Cache<BitBoard>,
         mut alpha: isize,
         mut beta: isize,
     ) -> ControlFlow<M::Break, isize> {
@@ -31,7 +33,7 @@ impl ABSolver<BitBoard> for MinimaxQuick {
         let prev_alpha = alpha;
         alpha = max(alpha, pos.will_lose_score() + 1);
         beta = min(beta, pos.will_win_score() - 1);
-        (alpha, beta) = cache.check(&pos, alpha, beta);
+        (alpha, beta) = cache.get_check(&pos, alpha, beta);
         if alpha >= beta {return ControlFlow::Continue(beta); }
 
         for col in moves {
@@ -41,13 +43,13 @@ impl ABSolver<BitBoard> for MinimaxQuick {
             if alpha >= beta { break; }
         }
 
-        cache.check_insert(&pos, prev_alpha, alpha, beta);
+        cache.insert_check(&pos, prev_alpha, alpha, beta);
         ControlFlow::Continue(alpha)
     }
 }
 
 impl Solver<BitBoard> for MinimaxQuick {
-    fn solve<M: SolverManager>(pos: BitBoard, boss: &mut M, cache: &mut Cache) -> ControlFlow<M::Break, isize> {
+    fn solve<M: SolverManager>(pos: BitBoard, boss: &mut M, cache: &mut Cache<BitBoard>) -> ControlFlow<M::Break, isize> {
         let min = pos.will_lose_score();
         let max = pos.will_win_score();
         Self::minimax(pos, boss, cache, min, max)

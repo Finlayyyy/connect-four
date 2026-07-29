@@ -117,6 +117,11 @@ pub mod column {
         pub fn mirrored(self) -> Self {
             Self::raw(usize::from(Self::MAX) - usize::from(self))
         }
+
+        /// Returns the 1-indexed digit of the column
+        pub fn to_digit(&self) -> char {
+            char::from_digit(1 + u32::from(*self), 10).unwrap()
+        }
     }
 
     impl Display for Idx {
@@ -209,6 +214,9 @@ impl From<Dir> for (isize, isize) {
 }
 
 impl Cell {
+    /// The number of cells on a connect foru board.
+    pub const COUNT: usize = column::COUNT * row::COUNT;
+
     /// Tries to shift the cell by (col, row), returning `None`
     /// when out of bounds
     #[inline(always)]
@@ -225,6 +233,13 @@ impl Cell {
     #[inline(always)]
     pub fn above(&self) -> Option<Cell> {
         self.try_shift(Dir::Up, 1)
+    }
+
+    /// The cell below, returning `None` for any cell in the
+    /// bottom row of the board
+    #[inline(always)]
+    pub fn below(&self) -> Option<Cell> {
+        self.try_shift(Dir::Down, 1)
     }
 
     /// Returns an iterator over cells in the given direction

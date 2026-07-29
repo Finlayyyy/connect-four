@@ -4,7 +4,6 @@ use rand::RngExt;
 
 use crate::basic::*;
 use crate::board::{Board, CloneBoard, MutBoard};
-use crate::solver_utils::Position;
 
 /// Moves implementation using a vector of placed tokens.
 /// Stores only the moves made, reconstructing the board state as needed.
@@ -14,16 +13,19 @@ pub struct Moves {
 }
 
 impl Moves {
+    /// Returns an iterator of moves made
     pub fn iter(&self) -> std::slice::Iter<'_, (column::Idx, Token)> {
         self.moves.iter()
     }
 
+    /// Convert into a moves string
     pub fn to_string(&self) -> String {
         self.iter()
-            .map(|&(col, _)| char::from_digit(1 + u32::from(col), 10).unwrap())
+            .map(|&(col, _)| col.to_digit())
             .collect()
     }
 
+    /// Read from a moves string
     pub fn from_string(string: &str) -> Self {
         let tokens = std::iter::successors(Some(Token::STARTING), |t| Some(t.next()));
         let cols = string
@@ -34,6 +36,7 @@ impl Moves {
         }
     }
 
+    /// A random sequence of `len` moves
     pub fn random(len: usize) -> Self {
         assert!(len <= 42);
         let mut board = Self::EMPTY;
@@ -93,7 +96,7 @@ impl MutBoard for Moves {
             .iter()
             .enumerate()
             .rev()
-            .find(|(i, (c, t))| (*c == col));
+            .find(|(_, (c, _))| *c == col);
         match idx {
             None => (),
             Some((i, _)) => {

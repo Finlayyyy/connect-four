@@ -4,11 +4,6 @@ Much inspiration was taken from the well-loved guide on [Pascal Pons' Blog](http
 
 Still a work in progress!
 Todo:
-- limit hashbrown hash memory
 - make testsets static
 - check hash table statistical distribution
-- fix symmsolver
-- inline
-- openings
-- Make Cache generic over board
 - make bitboard hash symmetrically

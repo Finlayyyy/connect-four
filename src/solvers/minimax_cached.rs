@@ -6,10 +6,11 @@ use crate::board::{CloneBoard, HashBoard, MutBoard};
 use crate::solver_utils::*;
 use crate::solvers::{Solver, ABSolver};
 
+/// Extends `MinimaxClone` with caching.
 pub struct MinimaxCached { }
 
 impl MinimaxCached {
-    fn minimax<P, M>(pos: P, boss: &mut M, cache: &mut Cache) -> ControlFlow<M::Break, isize>
+    fn minimax<P, M>(pos: P, boss: &mut M, cache: &mut Cache<P>) -> ControlFlow<M::Break, isize>
     where
         P: Position + CloneBoard + HashBoard,
         M: SolverManager,
@@ -17,7 +18,7 @@ impl MinimaxCached {
         boss.check()?;
         if pos.completed() { return ControlFlow::Continue(0); }
 
-        if let Some((EntryKind::Exact, score)) = cache.get(&pos) {
+        if let Some((BoundType::Exact, score)) = cache.get(&pos) {
             return ControlFlow::Continue(score);
         }
 
@@ -31,15 +32,13 @@ impl MinimaxCached {
             let score = -Self::minimax(next_pos, boss, cache)?;
             best = max(best, score);
         }
-        cache.insert(EntryKind::Exact, &pos, best);
+        cache.insert(BoundType::Exact, &pos, best);
         ControlFlow::Continue(best)
     }
 }
 
 impl<P: Position + CloneBoard + HashBoard> Solver<P> for MinimaxCached {
-    fn solve<M: SolverManager>(pos: P, boss: &mut M, cache: &mut Cache) -> ControlFlow<M::Break, isize> {
-        let min = pos.will_lose_score();
-        let max = pos.will_win_score();
+    fn solve<M: SolverManager>(pos: P, boss: &mut M, cache: &mut Cache<P>) -> ControlFlow<M::Break, isize> {
         Self::minimax(pos, boss, cache)
     }
 }

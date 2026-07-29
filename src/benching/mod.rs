@@ -14,6 +14,7 @@ pub const MIDDLE_MEDIUM: &str = "Test_L2_R2";
 pub const BEGIN_EASY: &str = "Test_L1_R1";
 pub const BEGIN_MEDIUM: &str = "Test_L1_R2";
 pub const BEGIN_HARD: &str = "Test_L1_R3";
+pub const SOLVE: &str = "SOLVE";
 
 /// Use the bencher to bench the given combination
 /// of board and solver
@@ -28,6 +29,10 @@ macro_rules! bench {
 
 /// Read the given testset from disk
 pub fn read_testset(string: &str) -> Vec<(Moves, isize)> {
+    if string == SOLVE {
+        return vec![(Moves::EMPTY, 1)];
+    }
+
     let contents = fs::read_to_string(format!("src/benching/positions/{}", string))
         .expect(format!("Could not read file: {}", string).as_str());
 
@@ -100,7 +105,7 @@ impl Bencher {
         for set in self.tests.iter() {
             let mut boss = Timeout::new(self.max_time, Logger::new());
             boss.start_timer();
-            let mut cache = Cache::new(Cache::LARGE_SIZE);
+            let mut cache = Cache::new_large();
 
             let (dur_len, dur_sum) = set
                 .iter()
@@ -109,7 +114,7 @@ impl Bencher {
                 .fold((0, 0), |(l, s), dur| (l + 1, s + dur));
 
             let mean_dur = dur_sum as f64 / dur_len as f64;
-            let mean_count = boss.timer.inner.count() as f64 / dur_len as f64;
+            let mean_count = boss.inner.count() as f64 / dur_len as f64;
 
             print!("{:4.0}ms {:.2e}# {:4.0}/|", mean_dur, mean_count, dur_len);
             if dur_len < set.len() {
@@ -124,7 +129,7 @@ impl Drop for Bencher {
     fn drop(&mut self) {
         print!("                                         |");
         for _ in &self.tests {
-            print!("-------------|");
+            print!("--------------------|");
         }
         println!("");
     }
@@ -133,7 +138,7 @@ impl Drop for Bencher {
 /// Runs the given solver on the given position with the
 /// boss and cache. Returns `None` if the solver does not finish,
 /// otherwise the number of milliseconds the solver ran for.
-fn bench_func_on<S, P, M>(boss: &mut M, cache: &mut Cache, moves: &Moves, correct: isize) -> Option<usize>
+fn bench_func_on<S, P, M>(boss: &mut M, cache: &mut Cache<P>, moves: &Moves, correct: isize) -> Option<usize>
 where
     P: Position,
     M: SolverManager,
@@ -150,5 +155,5 @@ where
 
     assert_eq!(score, correct, "Score assertion failed for moves {}", moves);
     cache.clear();
-    return Some(dur as usize);
+    return Some(usize::try_from(dur).unwrap());
 }
