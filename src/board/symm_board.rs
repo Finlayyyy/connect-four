@@ -44,11 +44,11 @@ impl HashBoard for SymmBoard {
     fn key(&self) -> u64 {
         let centre = self.0.get_col(column::Idx::CENTRE).to_u64();
 
-        let mut left = 0; // 012
+        let mut left = 0;
         for col in column::LEFT_SIDE {
             left = self.0.get_col(col).to_u64() | (left << 7);
         }
-        let mut right = 0; // 654
+        let mut right = 0;
         for col in column::RIGHT_SIDE {
             right = self.0.get_col(col).to_u64() | (right << 7);
         }
@@ -58,7 +58,7 @@ impl HashBoard for SymmBoard {
         } else {
             (right, left)
         };
-        // 0 1 2 | 3 | 6 5 4
+
         left | (centre << (3 * 7)) | (right << (4 * 7))
     }
 }
