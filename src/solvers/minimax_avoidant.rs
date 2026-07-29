@@ -9,25 +9,29 @@ use crate::board::{Board, CloneBoard, HashBoard, MutBoard};
 use crate::solver_utils::*;
 use crate::solvers::{Solver, ABSolver};
 
+/// Struct to hold counts of adjacent cells for use in heuristic evaluation
 /// (curr_triples, opp_triples, curr_pairs, opp_pairs)
 #[derive(Clone, Copy, Debug)]
 struct NbhdCounts(usize, usize, usize, usize);
 impl NbhdCounts {
-    fn heuristic(&self) -> usize {
-        self.0 * 1000 + self.1 * 100 + self.2 * 10 + self.3
+    /// Returns a heuristic value for the current state of adjacent cells
+    pub fn heuristic(&self) -> usize {
+        self.0 * 10_000 + self.3 * 1000 + 100 - (self.2 * 10 + self.3)
     }
 }
 
+/// Enum representing the result of a move
 #[derive(Clone, Debug)]
 enum MoveResult {
     CurrWin,      // connect-4 for curr
     BlockOppWin,  // stop opp making connect-4
     LetOppWin,    // opp can now play on top of curr's token and connect-4
     ForcedOppWin, // opp has a potential connect-4 both at the current cell and the one above, curr has lost
-    Nbhd(NbhdCounts),
+    Nbhd(NbhdCounts), // no immediate win for curr or opp
 }
 
-impl NbhdCounts {
+impl MoveResult {
+    /// Returns the result of a move at the given cell
     fn new_at<P: Position + Board>(pos: &P, cell: Cell) -> MoveResult {
         let Some((curr_pairs, curr_triples)) = pos.count_adjacent_around(cell, pos.curr()) else {
             return MoveResult::CurrWin;
@@ -52,6 +56,7 @@ impl NbhdCounts {
     }
 }
 
+/// Extends `MinimaxOrdered` by avoiding immediate enemy wins
 pub struct MinimaxAvoidant { }
 impl<P: Position + CloneBoard + HashBoard> ABSolver<P> for MinimaxAvoidant {
     fn minimax<M: SolverManager>(
@@ -73,7 +78,7 @@ impl<P: Position + CloneBoard + HashBoard> ABSolver<P> for MinimaxAvoidant {
         let mut will_lose = false;
 
         for cell in pos.next_cells() {
-            match NbhdCounts::new_at(&pos, cell) {
+            match MoveResult::new_at(&pos, cell) {
                 // curr has at least one immediately winning move
                 MoveResult::CurrWin => return ControlFlow::Continue(pos.will_win_score()),
                 // opponent has at least one winning move next turn

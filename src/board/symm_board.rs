@@ -44,12 +44,12 @@ impl HashBoard for SymmBoard {
     fn key(&self) -> u64 {
         let centre = self.0.get_col(column::Idx::CENTRE).to_u64();
 
-        let mut left = 0;
+        let mut left = 0; // 012
         for col in column::LEFT_SIDE {
             left = self.0.get_col(col).to_u64() | (left << 7);
         }
-        let mut right = 0;
-        for col in column::RIGHT_SIDE.into_iter().rev() {
+        let mut right = 0; // 654
+        for col in column::RIGHT_SIDE {
             right = self.0.get_col(col).to_u64() | (right << 7);
         }
 
@@ -58,7 +58,7 @@ impl HashBoard for SymmBoard {
         } else {
             (right, left)
         };
-
+        // 0 1 2 | 3 | 6 5 4
         left | (centre << (3 * 7)) | (right << (4 * 7))
     }
 }
@@ -88,7 +88,9 @@ impl Eq for SymmBoard {}
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::board::Moves;
+
+use super::*;
 
     make_board_tests!(SymmBoard);
     make_mut_board_tests!(SymmBoard);
@@ -111,5 +113,17 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn little() {
+        let moves_a = Moves::from_string("166");
+        let board_a = SymmBoard::from_moves(&moves_a);
+        println!("{}", board_a.key());
+
+        let moves_b = Moves::from_string("11444");
+        let board_b = SymmBoard::from_moves(&moves_b);
+        println!("{}", board_b.key());
+
     }
 }

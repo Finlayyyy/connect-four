@@ -20,7 +20,9 @@ use std::fmt::Debug;
 /// - mask: bitmap of placed tokens
 ///
 /// Allows for fast querying, hashing and win checks.
-#[derive(Clone, PartialEq, Eq)]
+/// Credit to
+/// [Pascal Pons' Blog](http://blog.gamesolver.org/solving-connect-four/06-bitboard/)
+#[derive(Clone)]
 pub struct BitBoard {
     board: u64,
     mask: u64,
@@ -61,14 +63,25 @@ const fn bottom_col_mask(col: column::Idx) -> u64 {
 /// Bitmask of the given column
 #[inline(always)]
 const fn col_mask(col: column::Idx) -> u64 {
-    0b111111 << (WIDTH * col.to_u64())
+    0b111_1111 << (WIDTH * col.to_u64())
 }
+
+/// Bitmask of the left side of the board
+const LEFT_SIDE_MASK: u64 = (1 << (WIDTH * 3)) - 1;
 
 /// Bitmask fo the given cell
 #[inline(always)]
 const fn cell_mask(cell: Cell) -> u64 {
     (1 << cell.row.to_u64()) << (WIDTH * cell.col.to_u64())
 }
+
+/// Returns the column at the given index
+/// shifted to the first column position.
+#[inline(always)]
+const fn get_col(mask: u64, col: column::Idx) -> u64 {
+    (mask & col_mask(col)) >> (WIDTH * col.to_u64())
+}
+
 
 impl BitBoard {
     /// Bitmask with a 1 at the cell of every valid move
@@ -213,8 +226,15 @@ impl BitBoard {
     }
 
     /// Heuristic to order move exploration
+    #[inline]
     pub fn heuristic(&self) -> u32 {
         self.curr_win_mask().count_ones()
+    }
+
+    /// Returns an asymmetric key for the board state
+    #[inline(always)]
+    fn asymm_key(&self) -> u64 {
+        self.board + self.mask + BOTTOM_MASK
     }
 }
 
@@ -289,8 +309,6 @@ impl Board for BitBoard {
     }
 }
 
-impl CloneBoard for BitBoard {}
-
 impl MutBoard for BitBoard {
     fn unplace(&mut self, col: column::Idx) {
         let bit_mask = cell_mask(self.top(col).unwrap());
@@ -300,10 +318,41 @@ impl MutBoard for BitBoard {
     }
 }
 
+impl CloneBoard for BitBoard {}
+
+impl PartialEq for BitBoard {
+    fn eq(&self, other: &Self) -> bool {
+        let k1 = self.asymm_key();
+        let k2 = other.asymm_key();
+        k1 == k2
+        || column::COLUMNS
+            .iter()
+            .all(|&col| get_col(k1, col) == get_col(k2, col.mirrored()))
+    }
+}
+
+impl Eq for BitBoard {}
+
 impl HashBoard for BitBoard {
-    #[inline(always)]
     fn key(&self) -> u64 {
-        self.board + self.mask + BOTTOM_MASK
+        let k = self.asymm_key();
+        let centre = k & col_mask(column::Idx::CENTRE);
+
+        let left = k & LEFT_SIDE_MASK;
+        let right = {
+            let mut r = 0;
+            for (i, &col) in column::RIGHT_SIDE.iter().enumerate() {
+                r |= get_col(k, col) << (WIDTH * i as u64);
+            }
+            r
+        };
+        let (left, right) = if left <= right {
+            (left, right)
+        } else {
+            (right, left)
+        };
+        let right = right << (4 * WIDTH);
+        left | centre | right
     }
 }
 
@@ -366,6 +415,26 @@ mod tests {
                         );
                     }
                 }
+            }
+        }
+    }
+
+    #[test]
+    fn test_symmetry() {
+        let mut board_a = BitBoard::EMPTY;
+        let mut board_b = BitBoard::EMPTY;
+        let mut token = Token::STARTING;
+        for _ in row::BOTTOM_UP {
+            for col in column::COLUMNS {
+                board_a.place(col, token).unwrap();
+                board_b.place(col.mirrored(), token).unwrap();
+                token = token.next();
+                assert_eq!(board_a, board_b, "Symmetric BitBoards are not equal");
+                assert_eq!(
+                    board_a.key(),
+                    board_b.key(),
+                    "Symmetric BitBoards have different hashes"
+                );
             }
         }
     }

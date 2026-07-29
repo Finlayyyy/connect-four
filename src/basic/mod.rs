@@ -76,10 +76,10 @@ pub mod column {
         Idx::raw(6),
     ];
 
-    /// Column indexes on the left side of the board, not including centre
+    /// Column indexes on the left side of the board, left to right, not including centre
     pub const LEFT_SIDE: [Idx; 3] = [Idx::raw(0), Idx::raw(1), Idx::raw(2)];
-    /// Column indexes on the right side of the board, not including centre
-    pub const RIGHT_SIDE: [Idx; 3] = [Idx::raw(4), Idx::raw(5), Idx::raw(6)];
+    /// Column indexes on the right side of the board, right to left, not including centre
+    pub const RIGHT_SIDE: [Idx; 3] = [Idx::raw(6), Idx::raw(5), Idx::raw(4)];
 
     /// Centred column indexes, starting in the middle and moving outward
     pub const CENTRED: [Idx; COUNT] = [

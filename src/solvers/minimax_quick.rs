@@ -8,6 +8,8 @@ use crate::solvers::{Solver, ABSolver};
 
 /// A solver that extends `MinimaxABCached` and relies on `BitBoard`
 /// being able to quickly calculate possible non-losing next moves.
+/// Credit to
+/// [Pascal Pons' Blog](http://blog.gamesolver.org/solving-connect-four/12-lower-bound-transposition-table/)
 pub struct MinimaxQuick { }
 
 impl ABSolver<BitBoard> for MinimaxQuick {

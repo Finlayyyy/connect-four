@@ -165,6 +165,7 @@ impl<B: HashBoard + Position> Cache<B> {
 
     /// Search the cache for an entry for board and, if found,
     /// update the given bounds and return them as (alpha, beta)
+    #[inline(always)]
     pub fn get_check(&self, board: &B, alpha: isize, beta: isize) -> (isize, isize) {
         match self.get(board) {
             Some((BoundType::Lower, score)) if score > alpha => (score, beta),
@@ -212,6 +213,7 @@ impl<B: HashBoard + Position> Cache<B> {
     /// Given a board with an initial alpha, best score (updated alpha)
     /// and beta bound, inserts an entry into the hash table with the
     /// appropriate bound type.
+    #[inline(always)]
     pub fn insert_check(
         &mut self,
         board: &B,
