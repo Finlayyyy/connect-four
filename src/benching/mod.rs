@@ -2,7 +2,8 @@
 use std::fs;
 use std::ops::ControlFlow;
 use std::time::{Duration, Instant};
-
+use std::io;
+use std::io::Write;
 
 use crate::board::*;
 use crate::solver_utils::*;
@@ -117,6 +118,8 @@ impl Bencher {
             let mean_count = boss.inner.count() as f64 / dur_len as f64;
 
             print!("{:4.0}ms {:.2e}# {:4.0}/|", mean_dur, mean_count, dur_len);
+            io::stdout().flush().unwrap();
+
             if dur_len < set.len() {
                 break;
             };
@@ -148,12 +151,10 @@ where
 
     let start = Instant::now();
     let ControlFlow::Continue(score) = S::solve(pos, boss, cache) else {
-        cache.clear();
         return None;
     };
     let dur = start.elapsed().as_millis();
 
     assert_eq!(score, correct, "Score assertion failed for moves {}", moves);
-    cache.clear();
     Some(usize::try_from(dur).unwrap())
 }
