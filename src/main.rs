@@ -92,7 +92,7 @@ fn bench_hard() {
 fn bench_solve() {
     println!("BENCH SOLVE");
     let testsets = [BEGIN_HARD, SOLVE];
-    let tests = Bencher::read_testsets(&testsets, 100);
+    let tests = Bencher::read_testsets(&testsets, 1000);
     let bencher = Bencher::new(tests, &testsets, Duration::from_mins(30));
     bench!(bencher, BitBoard, Deepening<MinimaxQuick>);
 }
