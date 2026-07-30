@@ -16,7 +16,7 @@ impl MinimaxMut {
     ) -> ControlFlow<M::Break, isize> {
         boss.check()?;
 
-        if pos.completed() {
+        if pos.full() {
             return ControlFlow::Continue(0);
         }
 
@@ -58,7 +58,7 @@ impl MinimaxClone {
     ) -> ControlFlow<M::Break, isize> {
         boss.check()?;
 
-        if pos.completed() {
+        if pos.full() {
             return ControlFlow::Continue(0);
         }
 

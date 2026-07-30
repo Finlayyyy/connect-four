@@ -225,10 +225,13 @@ impl BitBoard {
         false
     }
 
-    /// Heuristic to order move exploration
+    /// Heuristic to order move exploration. A higher score represents
+    /// a better position for the current player.
     #[inline]
-    pub fn heuristic(&self) -> u32 {
-        self.curr_win_mask().count_ones()
+    pub fn heuristic(&self) -> isize {
+        let wins = self.curr_win_mask().count_ones() as isize;
+        let losses = self.opp_win_mask().count_ones() as isize;
+        wins - losses
     }
 
     /// Returns an asymmetric key for the board state

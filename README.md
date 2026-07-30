@@ -9,5 +9,4 @@ Still a work in progress!
 Todo:
 - make testsets static
 - check hash table statistical distribution
-- make bitboard hash symmetrically
 - add hashboard tests

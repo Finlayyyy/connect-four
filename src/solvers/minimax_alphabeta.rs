@@ -19,7 +19,7 @@ impl MinimaxAlphaBeta {
         mut beta: isize,
     ) -> ControlFlow<M::Break, isize> {
         boss.check()?;
-        if pos.completed() { return ControlFlow::Continue(0); }
+        if pos.full() { return ControlFlow::Continue(0); }
 
         beta = min(beta, pos.will_win_score());
         if alpha >= beta { return ControlFlow::Continue(beta); };

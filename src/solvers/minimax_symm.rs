@@ -24,7 +24,7 @@ impl MinimaxSymm {
         diffs: SymmDiff,
     ) -> ControlFlow<M::Break, isize> {
         boss.check()?;
-        if pos.completed() { return ControlFlow::Continue(0); }
+        if pos.full() { return ControlFlow::Continue(0); }
         let prev_alpha = alpha;
 
         beta = min(beta, pos.will_win_score());

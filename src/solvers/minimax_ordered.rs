@@ -20,7 +20,7 @@ impl<P: Position + CloneBoard + HashBoard> ABSolver<P> for MinimaxOrdered {
         mut beta: isize,
     ) -> ControlFlow<M::Break, isize> {
         boss.check()?;
-        if pos.completed() { return ControlFlow::Continue(0); }
+        if pos.full() { return ControlFlow::Continue(0); }
         let prev_alpha = alpha;
 
         (alpha, beta) = cache.get_check(&pos, alpha, beta);

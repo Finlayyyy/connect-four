@@ -14,8 +14,15 @@ pub trait Position: Board {
 
     /// Has the game run out of empty cells?
     #[inline(always)]
-    fn completed(&self) -> bool {
+    fn full(&self) -> bool {
         self.move_count() == MAX_MOVES
+    }
+
+    /// Number of remaining empty cells, i.e. an upper bound
+    /// on the number of remaining moves
+    #[inline(always)]
+    fn remaining_moves(&self) -> usize {
+        MAX_MOVES - self.move_count()
     }
 
     /// Score if the next move is a win for the current

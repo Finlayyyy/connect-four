@@ -21,15 +21,19 @@ impl ABSolver<BitBoard> for MinimaxQuick {
         mut beta: isize,
     ) -> ControlFlow<M::Break, isize> {
         boss.check()?;
-        if pos.completed() { return ControlFlow::Continue(0); }
+        if pos.full() { return ControlFlow::Continue(0); }
         debug_assert!(!pos.curr_can_win());
 
         let Ok(nexts) = pos.possible_nonlosing_nexts() else {
             return ControlFlow::Continue(pos.will_lose_score());
         };
 
+        // With at most 2 moves remaining and no win for curr
+        // or opp, it must be a draw
+        if pos.remaining_moves() <= 2 { return ControlFlow::Continue(0); }
+
         let moves: MoveSorter<{ column::COUNT }, _, _> = nexts
-            .map(|(col, next_board)| (next_board.heuristic(), col))
+            .map(|(col, next_board)| (-next_board.heuristic(), col))
             .collect();
 
         let prev_alpha = alpha;

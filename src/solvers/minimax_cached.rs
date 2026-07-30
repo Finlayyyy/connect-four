@@ -16,7 +16,7 @@ impl MinimaxCached {
         M: SolverManager,
     {
         boss.check()?;
-        if pos.completed() { return ControlFlow::Continue(0); }
+        if pos.full() { return ControlFlow::Continue(0); }
 
         if let Some((BoundType::Exact, score)) = cache.get(&pos) {
             return ControlFlow::Continue(score);
