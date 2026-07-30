@@ -1,10 +1,8 @@
 use std::ops::ControlFlow;
 
-use crate::basic::{Cell, Token, column, row};
-use crate::benching::{END_EASY, read_testset};
-use crate::board::{Board, CloneBoard, MutBoard};
+use crate::benching::END_EASY;
 use crate::solver_utils::*;
-use crate::solvers::{Solver, ABSolver};
+use crate::solvers::Solver;
 
 pub use crate::board::*;
 
@@ -36,9 +34,9 @@ pub fn run_easy_tests<P: Position, S: Solver<P>>(count: usize) {
     let mut boss = LaissezFaire {};
     let mut cache = Cache::new_small();
 
-    for (moves, correct) in read_testset(END_EASY).into_iter().take(count) {
-        let pos = P::from_moves(&moves);
+    for (moves, correct) in END_EASY.iter().take(count) {
+        let pos = P::from_moves(moves);
         let ControlFlow::Continue(score) = S::solve(pos, &mut boss, &mut cache);
-        assert_eq!(score, correct, "Solver failed moveset {moves}");
+        assert_eq!(score, *correct, "Solver failed moveset {moves}");
     }
 }

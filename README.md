@@ -1,5 +1,5 @@
 # Connect Four
-This project is intended to show multiple approaches to solving the game of Connect Four, with a variety of different algorithms and board implementations.
+This project is intended to show multiple approaches to (strongly) solving the game of Connect Four, with a variety of different algorithms and board implementations.
 Much inspiration was taken from the well-loved guide on [Pascal Pons' Blog](http://blog.gamesolver.org/solving-connect-four/01-introduction/).
 
 AI Use Statement:
@@ -22,15 +22,13 @@ Complete comparison: `cargo run -r bench`
 
 Solve: `cargo run -r bench solve`
 
-  Runs the current best combination of solver and board (`Deepening<MinimaxQuick>` on `BitBoard` at the moment) on the hardest testset and then on an empty board i.e. attempt to completely solve the game.
+  Runs the current best combination of solver and board (`Deepening<MinimaxQuick>` on `BitBoard` at the moment) on all testsets and then on an empty board i.e. attempt to completely solve the game.
   Expect to take (<= 45 mins)
 
 ### Play
 todo!
 
 ## Todo
-
-Todo:
-- make testsets static
 - check hash table statistical distribution
 - add hashboard tests
+- decide whether to store depth in cache

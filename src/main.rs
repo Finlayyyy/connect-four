@@ -1,18 +1,13 @@
 #![feature(generic_const_exprs, never_type)]
-#![allow(unused_imports, dead_code, incomplete_features, unused_macros)]
+#![allow(incomplete_features, dead_code, unused_macros)]
 
-use crate::basic::*;
 use crate::benching::*;
 use crate::board::*;
 use crate::solver_utils::*;
-use crate::solvers::minimax_avoidant::MinimaxAvoidant;
-use crate::solvers::minimax_ordered::MinimaxOrdered;
-use crate::solvers::minimax_quick::MinimaxQuick;
 use crate::solvers::*;
 
 use std::env;
-use std::ops::ControlFlow;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 mod basic;
 #[macro_use]
@@ -27,9 +22,9 @@ fn play() {
 
 fn bench_very_easy() {
     println!("BENCH VERY EASY");
-    let testsets = [END_EASY, MIDDLE_EASY];
-    let tests = Bencher::read_testsets(&testsets, 100);
-    let bencher = Bencher::new(tests, &testsets, Duration::from_secs(1));
+    let bencher = bencher!(
+        100 from (END_EASY, MIDDLE_EASY) with Duration::from_secs(1)
+    );
     bench!(bencher, WithInfo<ArrayBoard>, MinimaxMut);
     bench!(bencher, BitCols, MinimaxMut);
     bench!(bencher, BitCols, MinimaxClone);
@@ -39,9 +34,10 @@ fn bench_very_easy() {
 
 fn bench_easy() {
     println!("BENCH EASY");
-    let testsets = [END_EASY, MIDDLE_EASY, MIDDLE_MEDIUM];
-    let tests = Bencher::read_testsets(&testsets, 100);
-    let bencher = Bencher::new(tests, &testsets, Duration::from_secs(5));
+    let bencher = bencher!(
+        100 from (END_EASY, MIDDLE_EASY, MIDDLE_MEDIUM) with Duration::from_secs(5)
+    );
+
     bench!(bencher, BitCols, MinimaxAlphaBeta);
     bench!(bencher, WithInfo<BitCols>, MinimaxAlphaBeta);
     println!();
@@ -65,9 +61,9 @@ fn bench_easy() {
 
 fn bench_medium() {
     println!("BENCH MEDIUM");
-    let testsets = [MIDDLE_EASY, MIDDLE_MEDIUM, BEGIN_EASY];
-    let tests = Bencher::read_testsets(&testsets, 100);
-    let bencher = Bencher::new(tests, &testsets, Duration::from_secs(15));
+    let bencher = bencher!(
+        100 from (MIDDLE_EASY, MIDDLE_MEDIUM, BEGIN_EASY) with Duration::from_secs(15)
+    );
     bench!(bencher, BitCols, MinimaxOrdered);
     bench!(bencher, SymmBoard, MinimaxOrdered);
     println!();
@@ -80,20 +76,26 @@ fn bench_medium() {
 
 fn bench_hard() {
     println!("BENCH HARD");
-    let testsets = [MIDDLE_MEDIUM, BEGIN_EASY, BEGIN_MEDIUM, BEGIN_HARD];
-    let tests = Bencher::read_testsets(&testsets, 100);
-    let bencher = Bencher::new(tests, &testsets, Duration::from_secs(60));
+    let bencher = bencher!(
+        100 from (MIDDLE_MEDIUM, BEGIN_EASY, BEGIN_MEDIUM, BEGIN_HARD)
+        with Duration::from_secs(30)
+    );
+
     bench!(bencher, BitCols, Deepening<MinimaxOrdered>);
     bench!(bencher, BitCols, Deepening<MinimaxAvoidant>);
     bench!(bencher, SymmBoard, Deepening<MinimaxAvoidant>);
     bench!(bencher, BitBoard, Deepening<MinimaxQuick>);
 }
 
-fn bench_solve() {
-    println!("BENCH SOLVE");
-    let testsets = [BEGIN_HARD, SOLVE];
-    let tests = Bencher::read_testsets(&testsets, 1000);
-    let bencher = Bencher::new(tests, &testsets, Duration::from_mins(30));
+fn bench_best() {
+    println!("BENCH BEST");
+    let bencher = bencher!((END_EASY, MIDDLE_EASY, MIDDLE_MEDIUM) with Duration::from_secs(30));
+    bench!(bencher, BitBoard, Deepening<MinimaxQuick>);
+    println!();
+    let bencher = bencher!((BEGIN_EASY, BEGIN_MEDIUM, SOLVE) with Duration::from_mins(5));
+    bench!(bencher, BitBoard, Deepening<MinimaxQuick>);
+    println!();
+    let bencher = bencher!((BEGIN_HARD) with Duration::from_mins(90));
     bench!(bencher, BitBoard, Deepening<MinimaxQuick>);
 }
 
@@ -112,7 +114,7 @@ fn display_usage() {
     println!("usage:                                      \n");
     println!("  ConnectFour [-h | --help]                 \n");
     println!("  ConnectFour bench                         \n");
-    println!("  ConnectFour bench [easy|medium|hard|solve]\n");
+    println!("  ConnectFour bench [easy|medium|hard|best]\n");
     println!("  ConnectFour generate                      \n");
     println!("  ConnectFour help                          \n");
     println!("  ConnectFour play                          \n");
@@ -134,7 +136,7 @@ fn main() {
                 "easy" => bench_easy(),
                 "medium" => bench_medium(),
                 "hard" => bench_hard(),
-                "solve" => bench_solve(),
+                "best" => bench_best(),
                 cmd => {
                     println!("Unrecognised command '{}'\n", cmd);
                     display_usage();

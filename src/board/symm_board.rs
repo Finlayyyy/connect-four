@@ -1,8 +1,7 @@
 use crate::basic::*;
 use crate::board::{BitCols, HashBoard};
-use crate::board::{Board, CloneBoard, MutBoard, bit_col::BitCol};
+use crate::board::{Board, CloneBoard, MutBoard};
 use crate::solver_utils::Position;
-use std::hash::Hash;
 
 /// A newtype over `BitCols` with custom equality and hash
 /// so that symmetric boards are equivalent

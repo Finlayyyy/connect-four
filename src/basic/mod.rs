@@ -214,7 +214,7 @@ impl From<Dir> for (isize, isize) {
 }
 
 impl Cell {
-    /// The number of cells on a connect foru board.
+    /// The number of cells on a connect four board.
     pub const COUNT: usize = column::COUNT * row::COUNT;
 
     /// Tries to shift the cell by (col, row), returning `None`
@@ -233,13 +233,6 @@ impl Cell {
     #[inline(always)]
     pub fn above(&self) -> Option<Cell> {
         self.try_shift(Dir::Up, 1)
-    }
-
-    /// The cell below, returning `None` for any cell in the
-    /// bottom row of the board
-    #[inline(always)]
-    pub fn below(&self) -> Option<Cell> {
-        self.try_shift(Dir::Down, 1)
     }
 
     /// Returns an iterator over cells in the given direction

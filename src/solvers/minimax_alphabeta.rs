@@ -1,9 +1,7 @@
-use crate::basic::*;
-use crate::board::{CloneBoard, MutBoard};
+use crate::board::CloneBoard;
 use std::cmp::max;
 use std::cmp::min;
 use std::ops::ControlFlow;
-use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::solver_utils::*;
 use crate::solvers::Solver;

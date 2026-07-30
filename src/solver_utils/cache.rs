@@ -1,5 +1,4 @@
 use crate::board::HashBoard;
-use crate::board::Board;
 use crate::solver_utils::{Position, position};
 
 use std::marker::PhantomData;
@@ -235,21 +234,20 @@ impl<B: HashBoard + Position> Cache<B> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::benching::{END_EASY, read_testset};
+    use crate::benching::END_EASY;
     use crate::board::*;
 
     #[test]
     fn pack_unpack() {
-        let testset = read_testset(END_EASY);
-        for (moves, score) in testset {
+        for (moves, score) in &*END_EASY {
             let bound = BoundType::Exact;
-            let board = BitCols::from_moves(&moves);
+            let board = BitCols::from_moves(moves);
             let key = board.key();
             let depth = board.move_count();
-            let entry = Entry::pack(bound, key, score, depth);
+            let entry = Entry::pack(bound, key, *score, depth);
             let (_kind_2, key_2, score_2, depth_2) = entry.unpack().unwrap();
             assert_eq!(key, key_2, "(unpack∘pack)(key) != key for {key}");
-            assert_eq!(score, score_2, "(unpack∘pack)(score) != score for {score}");
+            assert_eq!(*score, score_2, "(unpack∘pack)(score) != score for {score}");
             assert_eq!(depth, depth_2, "(unpack∘pack)(depth) != depth for {depth}");
         }
     }

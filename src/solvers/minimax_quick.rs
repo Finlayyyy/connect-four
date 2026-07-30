@@ -2,7 +2,7 @@ use std::cmp::{max, min};
 use std::ops::ControlFlow;
 
 use crate::basic::*;
-use crate::board::{BitBoard, Board, CloneBoard, HashBoard, MutBoard};
+use crate::board::BitBoard;
 use crate::solver_utils::*;
 use crate::solvers::{Solver, ABSolver};
 

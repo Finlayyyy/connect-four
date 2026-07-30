@@ -1,8 +1,4 @@
-use std::hash::Hash;
 use std::ops::ControlFlow;
-
-use crate::basic::*;
-use crate::board::*;
 
 #[macro_use]
 mod testing;

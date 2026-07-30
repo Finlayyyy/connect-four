@@ -2,7 +2,7 @@ use crate::basic::*;
 use crate::board::*;
 
 /// Maximum possible number of moves in a game
-pub const MAX_MOVES: usize = column::COUNT * row::COUNT;
+pub const MAX_MOVES: usize = Cell::COUNT;
 /// Minimum possible position score
 pub const MIN_SCORE: isize = -(MAX_MOVES as isize) / 2 + 3;
 /// Maximum possible position score

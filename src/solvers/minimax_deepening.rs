@@ -1,17 +1,14 @@
-use std::cmp::{max, min};
-use std::hash::Hash;
-use std::marker::PhantomData;
 use std::ops::ControlFlow;
+use std::marker::PhantomData;
 
-use crate::basic::*;
-use crate::board::{Board, CloneBoard, HashBoard, MutBoard};
+use crate::board::{CloneBoard, HashBoard};
 use crate::solver_utils::*;
 use crate::solvers::{ABSolver, Solver};
 
 /// A solver that wraps an alpha-beta solver that uses
 /// iterative deepening
 pub struct Deepening<S> {
-    inner: S,
+    pd: PhantomData<S>,
 }
 
 impl<P, S> Solver<P> for Deepening<S>
@@ -65,6 +62,7 @@ mod ordered_tests {
     );
 }
 
+#[cfg(test)]
 mod avoidant_tests {
     use super::*;
     use crate::solvers::MinimaxAvoidant;

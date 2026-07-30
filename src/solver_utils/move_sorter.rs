@@ -1,4 +1,4 @@
-use std::{mem::{ManuallyDrop, MaybeUninit}, slice};
+use std::mem::{ManuallyDrop, MaybeUninit};
 
 /// Datastructure optimised for a fast push
 /// and sort (descending) into_iter.

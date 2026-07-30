@@ -21,12 +21,6 @@ pub trait Board: Debug + Sized + Eq {
     /// An empty starting board.
     const EMPTY: Self;
 
-    /// Is the current board empty
-    #[inline(always)]
-    fn is_empty(&self) -> bool {
-        *self == Self::EMPTY
-    }
-
     /// Returns the token at the given cell, or None if the cell is empty.
     fn get(&self, cell: Cell) -> Option<Token>;
 

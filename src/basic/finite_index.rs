@@ -1,6 +1,3 @@
-use rand::RngExt;
-use rand::distr::{Distribution, StandardUniform};
-
 // Rust hackery to allow for assertions on
 // const generic parameters
 pub enum Assert<const COND: bool> {}
@@ -161,13 +158,5 @@ where Assert<{ N <= 1 << 8 }>: IsTrue,
 {
     fn from(value: FiniteIndex<N>) -> Self {
         isize::from(u8::from(value))
-    }
-}
-
-impl<const N: usize> Distribution<FiniteIndex<N>> for StandardUniform
-where Assert<{ N > 0 }>: IsTrue
-{
-    fn sample<R: rand::prelude::Rng + ?Sized>(&self, rng: &mut R) -> FiniteIndex<N> {
-        rng.random_range(0..N).try_into().unwrap()
     }
 }

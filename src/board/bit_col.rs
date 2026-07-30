@@ -104,11 +104,7 @@ impl BitCol {
         row::Idx::try_from(self.count() as isize - 1).ok()
     }
 
-    /// Returns the underlying u8 value of the column.
-    #[inline(always)]
-    pub fn to_u8(self) -> u8 {
-        self.0
-    }
+
 
     /// Returns the underlying u8 value of the column as u64
     #[inline(always)]

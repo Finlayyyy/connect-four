@@ -1,11 +1,10 @@
 use std::cmp::max;
 use std::ops::ControlFlow;
-use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::basic::*;
 use crate::board::{CloneBoard, MutBoard};
 use crate::solver_utils::*;
-use crate::solvers::{Solver, ABSolver};
+use crate::solvers::Solver;
 
 /// A basic minimax solver that uses a mutable board.
 pub struct MinimaxMut { }

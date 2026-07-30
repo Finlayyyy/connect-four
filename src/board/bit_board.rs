@@ -48,12 +48,6 @@ const ABOVE_MASK: u64 = BOTTOM_MASK << 6;
 /// Bitmask of every valid board position
 const BOARD_MASK: u64 = ((1 << (WIDTH * WIDTH - 1)) - 1) & (!ABOVE_MASK);
 
-/// Bitmask of the given row
-#[inline(always)]
-const fn row_mask(row: row::Idx) -> u64 {
-    BOTTOM_MASK << row.to_u64()
-}
-
 /// Bitmask of the cell at the bottom of the given cell
 #[inline(always)]
 const fn bottom_col_mask(col: column::Idx) -> u64 {
@@ -398,25 +392,22 @@ impl Debug for BitBoard {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::board::Moves;
+    use crate::benching::END_EASY;
 
     make_board_tests!(BitBoard);
     make_mut_board_tests!(BitBoard);
 
     #[test]
     fn possible_is_possible() {
-        for _ in 0..100 {
-            for len in 0..40 {
-                let moves = Moves::random(len);
-                let b = BitBoard::from_moves(&moves);
-                let possible = b.possible_mask();
-                for col in column::COLUMNS {
-                    if col_mask(col) & possible > 0 {
-                        assert!(
-                            b.clone().place(col, b.curr()).is_some(),
-                            "Could not place in col given by possible @ {col}"
-                        );
-                    }
+        for (moves, _) in &*END_EASY {
+            let b = BitBoard::from_moves(&moves);
+            let possible = b.possible_mask();
+            for col in column::COLUMNS {
+                if col_mask(col) & possible > 0 {
+                    assert!(
+                        b.clone().place(col, b.curr()).is_some(),
+                        "Could not place in col given by possible @ {col}"
+                    );
                 }
             }
         }

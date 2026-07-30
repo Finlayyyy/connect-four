@@ -7,7 +7,6 @@ use crate::solvers::minimax_ab_cached::MinimaxABCached;
 use crate::solvers::{ABSolver, Solver};
 
 use std::cmp::{max, min};
-use std::hash::Hash;
 use std::ops::ControlFlow;
 
 /// Solver that extends `MinimaxABCached` to use symmetry to

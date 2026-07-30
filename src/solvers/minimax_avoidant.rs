@@ -1,22 +1,26 @@
-use arrayvec::ArrayVec;
-use heapless::binary_heap::{BinaryHeap, Max};
 use std::cmp::{max, min};
-use std::hash::Hash;
 use std::ops::ControlFlow;
 
 use crate::basic::*;
-use crate::board::{Board, CloneBoard, HashBoard, MutBoard};
+use crate::board::{Board, CloneBoard, HashBoard};
 use crate::solver_utils::*;
 use crate::solvers::{Solver, ABSolver};
 
 /// Struct to hold counts of adjacent cells for use in heuristic evaluation
-/// (curr_triples, opp_triples, curr_pairs, opp_pairs)
 #[derive(Clone, Copy, Debug)]
-struct NbhdCounts(usize, usize, usize, usize);
+struct NbhdCounts {
+    curr_triples: usize,
+    opp_triples: usize,
+    curr_pairs: usize,
+    opp_pairs: usize,
+}
+
 impl NbhdCounts {
     /// Returns a heuristic value for the current state of adjacent cells
     pub fn heuristic(&self) -> usize {
-        self.0 * 10_000 + self.3 * 1000 + 100 - (self.2 * 10 + self.3)
+        self.curr_triples * 10_000
+        + self.curr_pairs * 1000
+        + 100 - (self.opp_triples * 10 + self.opp_pairs)
     }
 }
 
@@ -50,7 +54,7 @@ impl MoveResult {
                 return MoveResult::LetOppWin;
         }
 
-        MoveResult::Nbhd(NbhdCounts(curr_triples, opp_triples, curr_pairs, opp_pairs))
+        MoveResult::Nbhd(NbhdCounts { curr_triples, opp_triples, curr_pairs, opp_pairs })
     }
 }
 

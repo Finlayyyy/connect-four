@@ -1,7 +1,7 @@
 use crate::basic::{Cell, Token, column, row};
 use crate::board::{Board, MutBoard};
 
-    macro_rules! make_test {
+macro_rules! make_test {
     ($b:ty, $mod:ident, $func:ident) => {
         #[test]
         fn $func() {
@@ -28,6 +28,7 @@ macro_rules! make_mut_board_tests {
 pub mod board_tests {
     use super::*;
     use crate::board::Moves;
+    use crate::benching::END_EASY;
 
     pub fn empty_is_empty<B: Board>(name: &str) {
         let empty = B::EMPTY;
@@ -84,26 +85,25 @@ pub mod board_tests {
 
     pub fn next_cells<B: Board>(name: &str) {
         let mut curr = Token::STARTING;
-        for _ in 0..100 {
-            for len in 0..42 {
-                let mut b = B::from_moves(&Moves::random(len));
-                let nexts = b.next_cells().collect::<Vec<_>>();
-                for cell in nexts {
-                    let count_prev = b.col_count(cell.col);
-                    let placed = b.place(cell.col, curr);
-                    let count_post = b.col_count(cell.col);
-                    assert_eq!(
-                        count_prev + 1,
-                        count_post,
-                        "{name}::col_count should increment after place @ {}.",
-                        cell
-                    );
-                    assert_eq!(
-                        Some(cell),
-                        placed,
-                        "`{name}::next_cells` predicted incorrectly."
-                    );
-                }
+        for (moves, _) in &*END_EASY {
+            let mut b = B::from_moves(moves);
+            let nexts = b.next_cells().collect::<Vec<_>>();
+            for cell in nexts {
+                let count_prev = b.col_count(cell.col);
+                let placed = b.place(cell.col, curr);
+                let count_post = b.col_count(cell.col);
+                assert_eq!(
+                    count_prev + 1,
+                    count_post,
+                    "{name}::col_count should increment after place @ {}.",
+                    cell
+                );
+                assert_eq!(
+                    Some(cell),
+                    placed,
+                    "`{name}::next_cells` predicted incorrectly."
+                );
+
                 curr = curr.next();
             }
         }
@@ -112,7 +112,6 @@ pub mod board_tests {
 
 pub mod mut_board_tests {
     use super::*;
-    use crate::board::Moves;
 
     pub fn place_unplace_eq<B: Clone + MutBoard>(name: &str) {
         let mut board = B::EMPTY;

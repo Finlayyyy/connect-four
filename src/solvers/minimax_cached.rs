@@ -1,10 +1,9 @@
-use std::cmp::{max, min};
+use std::cmp::max;
 use std::ops::ControlFlow;
 
-use crate::basic::*;
-use crate::board::{CloneBoard, HashBoard, MutBoard};
+use crate::board::{CloneBoard, HashBoard};
 use crate::solver_utils::*;
-use crate::solvers::{Solver, ABSolver};
+use crate::solvers::Solver;
 
 /// Extends `MinimaxClone` with caching.
 pub struct MinimaxCached { }

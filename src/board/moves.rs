@@ -1,9 +1,7 @@
 use std::fmt::Display;
 
-use rand::RngExt;
-
 use crate::basic::*;
-use crate::board::{Board, CloneBoard, MutBoard};
+use crate::board::{Board, MutBoard};
 
 /// Moves implementation using a vector of placed tokens.
 /// Stores only the moves made, reconstructing the board state as needed.
@@ -27,20 +25,6 @@ impl Moves {
         Moves {
             moves: cols.zip(tokens).collect(),
         }
-    }
-
-    /// A random sequence of `len` moves
-    pub fn random(len: usize) -> Self {
-        assert!(len <= 42);
-        let mut board = Self::EMPTY;
-        let mut curr = Token::STARTING;
-        let mut rng = rand::rng();
-        for _ in 0..len {
-            let col = rng.random();
-            board.place(col, curr);
-            curr = curr.next();
-        }
-        board
     }
 }
 

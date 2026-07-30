@@ -1,9 +1,6 @@
 use std::cmp::{max, min};
-use std::hash::{Hash, RandomState};
 use std::ops::ControlFlow;
-
-use crate::basic::*;
-use crate::board::{CloneBoard, HashBoard, MutBoard};
+use crate::board::{CloneBoard, HashBoard};
 
 use crate::solver_utils::*;
 use crate::solvers::{Solver, ABSolver};
