@@ -35,7 +35,7 @@ impl<const N: usize, K: Ord, T> MoveSorter<N, K, T> {
         MoveSorter { len: 1, elems }
     }
 
-    /// Add the elem and sort ascending by the given score
+    /// Add the elem and sort descending by the given score
     pub fn push_sorting(&mut self, score: K, elem: T) {
         debug_assert!(self.len < N);
         let mut i = self.len;
