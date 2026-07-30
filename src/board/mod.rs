@@ -223,7 +223,7 @@ pub trait Board: Debug + Sized + Eq {
         for &(col, token) in moves.iter() {
             board.place(col, token);
         }
-        return board;
+        board
     }
 }
 

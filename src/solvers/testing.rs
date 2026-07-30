@@ -5,7 +5,6 @@ use crate::benching::{END_EASY, read_testset};
 use crate::board::{Board, CloneBoard, MutBoard};
 use crate::solver_utils::*;
 use crate::solvers::{Solver, ABSolver};
-use paste;
 
 pub use crate::board::*;
 

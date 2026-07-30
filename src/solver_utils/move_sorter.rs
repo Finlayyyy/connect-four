@@ -64,8 +64,7 @@ impl<const N: usize, K: Ord, T> Drop for MoveSorter<N, K, T> {
 impl<const N: usize, K: Ord, T> FromIterator<(K, T)> for MoveSorter<N, K, T> {
     fn from_iter<I: IntoIterator<Item = (K, T)>>(iter: I) -> Self {
         let mut sorter = Self::new();
-        let mut iter = iter.into_iter();
-        while let Some((key, elem)) = iter.next() {
+        for (key, elem) in iter {
             sorter.push_sorting(key, elem);
         }
         sorter

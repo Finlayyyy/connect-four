@@ -38,18 +38,16 @@ impl MoveResult {
         };
 
         let Some((opp_pairs, opp_triples)) = pos.count_adjacent_around(cell, pos.opp()) else {
-            if let Some(above) = cell.above() {
-                if pos.count_adjacent_around(above, pos.opp()).is_none() {
+            if let Some(above) = cell.above()
+                && pos.count_adjacent_around(above, pos.opp()).is_none() {
                     return MoveResult::ForcedOppWin;
-                }
             }
             return MoveResult::BlockOppWin;
         };
 
-        if let Some(above) = cell.above() {
-            if pos.count_adjacent_around(above, pos.opp()).is_none() {
+        if let Some(above) = cell.above()
+            && pos.count_adjacent_around(above, pos.opp()).is_none() {
                 return MoveResult::LetOppWin;
-            }
         }
 
         MoveResult::Nbhd(NbhdCounts(curr_triples, opp_triples, curr_pairs, opp_pairs))

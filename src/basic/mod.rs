@@ -119,8 +119,8 @@ pub mod column {
         }
 
         /// Returns the 1-indexed digit of the column
-        pub fn to_digit(&self) -> char {
-            char::from_digit(1 + u32::from(*self), 10).unwrap()
+        pub fn to_digit(self) -> char {
+            char::from_digit(1 + u32::from(self), 10).unwrap()
         }
     }
 
@@ -193,7 +193,7 @@ pub enum Dir {
 impl Dir {
     /// Transform Dir into `(col_offset, row_offset)`
     #[inline(always)]
-    pub fn into_dir(&self) -> (isize, isize) {
+    pub fn into_dir(self) -> (isize, isize) {
         match self {
             Dir::Up => (0, 1),
             Dir::Down => (0, -1),

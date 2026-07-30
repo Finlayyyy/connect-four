@@ -126,8 +126,8 @@ fn main() {
     };
     let cmd = cmd.to_lowercase();
     match cmd.as_str() {
-        "--help" => return display_usage(),
-        "-h" => return display_usage(),
+        "--help" => display_usage(),
+        "-h" => display_usage(),
         "bench" => {
             let Some(testset) = args.next() else { return bench(); };
             match testset.as_str() {
@@ -137,16 +137,18 @@ fn main() {
                 "solve" => bench_solve(),
                 cmd => {
                     println!("Unrecognised command '{}'\n", cmd);
-                    return display_usage();
+                    display_usage();
                 }
             }
         },
-        "generate" => return generate(),
-        "help" => return display_usage(),
-        "play" => return play(),
+        "generate" => generate(),
+        "help" => display_usage(),
+        "play" => play(),
         cmd => {
             println!("Unrecognised command '{}'\n", cmd);
-            return display_usage();
+            display_usage();
         }
     }
+
+
 }

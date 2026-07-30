@@ -70,7 +70,7 @@ impl<P: Position + CloneBoard + HashBoard> Solver<P> for MinimaxSymm {
 /// to efficiently compute when a board is symmetrical.
 ///
 /// i.e. symm_diff[i] = column[6-i].height() - column[i].height()
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 struct SymmDiff([isize; 3]);
 
 impl SymmDiff {

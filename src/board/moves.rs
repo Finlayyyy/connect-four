@@ -18,13 +18,6 @@ impl Moves {
         self.moves.iter()
     }
 
-    /// Convert into a moves string
-    pub fn to_string(&self) -> String {
-        self.iter()
-            .map(|&(col, _)| col.to_digit())
-            .collect()
-    }
-
     /// Read from a moves string
     pub fn from_string(string: &str) -> Self {
         let tokens = std::iter::successors(Some(Token::STARTING), |t| Some(t.next()));
@@ -92,11 +85,7 @@ impl Board for Moves {
 
 impl MutBoard for Moves {
     fn unplace(&mut self, col: column::Idx) {
-        let idx = self
-            .iter()
-            .enumerate()
-            .rev()
-            .find(|(_, (c, _))| *c == col);
+        let idx = self.iter().enumerate().rev().find(|(_, (c, _))| *c == col);
         match idx {
             None => (),
             Some((i, _)) => {
@@ -108,10 +97,9 @@ impl MutBoard for Moves {
 
 impl Display for Moves {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for (col, _) in &self.moves {
-            write!(f, "{}", 1 + usize::from(*col))?;
-        }
-        writeln!(f, "")
+        self.moves
+            .iter()
+            .try_for_each(|(col, _)| write!(f, "{}", col.to_digit()))
     }
 }
 

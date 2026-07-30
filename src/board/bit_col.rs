@@ -106,13 +106,13 @@ impl BitCol {
 
     /// Returns the underlying u8 value of the column.
     #[inline(always)]
-    pub fn to_u8(&self) -> u8 {
+    pub fn to_u8(self) -> u8 {
         self.0
     }
 
     /// Returns the underlying u8 value of the column as u64
     #[inline(always)]
-    pub fn to_u64(&self) -> u64 {
+    pub fn to_u64(self) -> u64 {
         self.0 as u64
     }
 }

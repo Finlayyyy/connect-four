@@ -34,7 +34,7 @@ pub fn read_testset(string: &str) -> Vec<(Moves, isize)> {
     }
 
     let contents = fs::read_to_string(format!("src/benching/positions/{}", string))
-        .expect(format!("Could not read file: {}", string).as_str());
+        .unwrap_or_else(|_| panic!("Could not read file: {}", string));
 
     let mut positions = Vec::new();
     for line in contents.lines() {
@@ -44,7 +44,7 @@ pub fn read_testset(string: &str) -> Vec<(Moves, isize)> {
         let moves = test[0];
         let score = test[1];
 
-        debug_assert!(moves.chars().all(|c| c.is_digit(10)));
+        debug_assert!(moves.chars().all(|c| c.is_ascii_digit()));
         let moves = Moves::from_string(moves);
 
         match score.parse::<isize>() {
@@ -87,7 +87,7 @@ impl Bencher {
         for test in tests.iter() {
             print!("              /{:>4} |", test.len());
         }
-        println!("");
+        println!();
         Bencher {
             tests,
             max_time,
@@ -98,7 +98,7 @@ impl Bencher {
     pub fn bench<P, S>(&self, name: &str)
     where
         P: Position + Send + 'static,
-        S: for<'a> Solver<P>,
+        S: Solver<P>,
     {
         print!("{:<40} |", name);
 
@@ -131,7 +131,7 @@ impl Drop for Bencher {
         for _ in &self.tests {
             print!("--------------------|");
         }
-        println!("");
+        println!();
     }
 }
 
@@ -155,5 +155,5 @@ where
 
     assert_eq!(score, correct, "Score assertion failed for moves {}", moves);
     cache.clear();
-    return Some(usize::try_from(dur).unwrap());
+    Some(usize::try_from(dur).unwrap())
 }

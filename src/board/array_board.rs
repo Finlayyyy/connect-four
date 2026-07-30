@@ -31,7 +31,7 @@ impl Board for ArrayBoard {
 
     fn can_place(&self, col: column::Idx) -> bool {
         self[Cell {
-            col: col,
+            col,
             row: row::Idx::TOP,
         }]
         .is_none()
