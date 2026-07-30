@@ -1,10 +1,10 @@
 use std::{mem::{ManuallyDrop, MaybeUninit}, slice};
 
 /// Datastructure optimised for a fast push
-/// and sort (ascending) into_iter.
+/// and sort (descending) into_iter.
 /// i.e. for algorithms to push possible moves onto
 /// and then iterate through them
-/// ordered (ascending) by some heuristic.
+/// ordered (descending) by some heuristic.
 /// Current implementation is a insertionsort on each
 /// push which is fast for small arrays and stable
 pub struct MoveSorter<const N: usize, K: Ord, T> {
