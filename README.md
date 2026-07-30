@@ -18,12 +18,12 @@ Complete comparison: `cargo run -r bench`
 
   Runs several different combinations of approaches, grouped by their 
   estimated capability, on increasingly difficult testsets. 
-  Expect to take (<= 15 mins)
+  Expect to take <= 15 mins.
 
 Solve: `cargo run -r bench solve`
 
   Runs the current best combination of solver and board (`Deepening<MinimaxQuick>` on `BitBoard` at the moment) on all testsets and then on an empty board i.e. attempt to completely solve the game.
-  Expect to take (<= 45 mins)
+  Expect to take <= 90 mins (≈ 1000 five-second testcases !)
 
 ### Play
 todo!

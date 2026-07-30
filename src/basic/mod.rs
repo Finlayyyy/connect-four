@@ -6,7 +6,7 @@ use crate::basic::finite_index::FiniteIndex;
 
 mod finite_index;
 
-/// Token on the connect four board.
+/// Token on the Connect Four board.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum Token {
     A,
@@ -214,7 +214,7 @@ impl From<Dir> for (isize, isize) {
 }
 
 impl Cell {
-    /// The number of cells on a connect four board.
+    /// The number of cells on a Connect Four board.
     pub const COUNT: usize = column::COUNT * row::COUNT;
 
     /// Tries to shift the cell by (col, row), returning `None`
