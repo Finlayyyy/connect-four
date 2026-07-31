@@ -270,7 +270,7 @@ pub trait CloneBoard: Board + Clone {
         board
     }
 
-    fn dfs(&self, curr: Token, depth: usize, visit_leaf: &mut impl FnMut(&Self) -> ()) {
+    fn dfs(&self, curr: Token, depth: usize, visit_leaf: &mut impl FnMut(&Self)) {
         if depth == 0 {
             return visit_leaf(self);
         }
@@ -288,6 +288,10 @@ pub trait MutBoard: Board {
     fn unplace(&mut self, col: column::Idx);
 }
 
+/// Trait for board implementations that have a cheap hash function `key`,
+/// used for caching board states in the solver. Must only take up
+/// `column::COUNT * column::COUNT = 49` bits.
 pub trait HashBoard: Board {
+    /// Returns a 49-bit hash key for the board state.
     fn key(&self) -> u64;
 }

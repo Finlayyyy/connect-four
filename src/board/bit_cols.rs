@@ -99,6 +99,9 @@ mod tests {
     use super::*;
     make_board_tests!(BitCols);
     make_mut_board_tests!(BitCols);
+    make_hash_board_tests!(BitCols);
+
+
 }
 
 #[cfg(test)]
@@ -107,4 +110,5 @@ mod pos_tests {
     use crate::solver_utils::*;
     make_board_tests!(WithInfo<BitCols>);
     make_mut_board_tests!(WithInfo<BitCols>);
+    make_hash_board_tests!(WithInfo<BitCols>);
 }

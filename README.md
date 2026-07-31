@@ -23,13 +23,10 @@ Complete comparison: `cargo run -r bench`
 Solve: `cargo run -r bench solve`
 
   Runs the current best combination of solver and board (`Deepening<MinimaxQuick>` on `BitBoard` at the moment) on all testsets and then on an empty board i.e. attempt to completely solve the game.
-  Expect to take <= 90 mins (≈ 1000 five-second testcases !)
+  Expect to take <= 90 mins in total (≈ 1000 five-second testcases !)
 
 ### Play
 todo!
 
 ## Todo
-- check hash table statistical distribution
-- add hashboard tests
-- order cache check in MinimaxQuick
-- add Hasher to Cache (+ depth comparison)
+- improve cache entry

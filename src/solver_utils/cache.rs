@@ -1,7 +1,9 @@
 use crate::board::HashBoard;
 use crate::solver_utils::{Position, position};
 
+use ahash::AHasher;
 use std::marker::PhantomData;
+use std::hash::Hasher;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BoundType {
@@ -93,68 +95,64 @@ impl Entry {
     }
 }
 
+/// Very large prime number for hash table size
+/// * sizeof::<u64>() = ~400MB
+const LARGE_SIZE: usize = 50_331_653;
+
+// Relatively small prime number for smaller hash table
+// * sizeof::<u64>() = ~2MB
+const SMALL_SIZE: usize = 393241;
+
+/// Any entry with a greater depth will not be inserted
+const MAX_CACHE_DEPTH: usize = position::MAX_MOVES - 5;
+
+// Hash the given `key` into an index into
+/// the inner table with `size` buckets
+fn hash(key: u64, size: usize) -> usize {
+    let mut hasher = AHasher::default();
+    hasher.write_u64(key);
+    (hasher.finish() as usize) % size
+}
+
 /// Transposition Table Cache
 /// Can store a HashBoard with a key of at most 49 bits
 pub struct Cache<B> {
     table: Vec<Entry>,
-    max_count: u64,
+    size: usize,
     pd: PhantomData<B>
 }
 impl<B> Cache<B> {
-    /// Very large prime number for hash table size
-    /// * sizeof::<u64>() = ~400MB
-    const LARGE_SIZE: usize = 50331653;
-
-    // Relatively small prime number for smaller hash table
-    // * sizeof::<u64>() = ~2MB
-    const SMALL_SIZE: usize = 393241;
-
-    /// Any entry with a greater depth will not be inserted
-    const MAX_CACHE_DEPTH: usize = position::MAX_MOVES - 5;
-
     /// Construct a new cache with the given amount
     /// of space
     pub fn new(size: usize) -> Self {
         Cache {
             table: vec![Entry::EMPTY; size],
-            max_count: size as u64,
+            size,
             pd: PhantomData
         }
     }
 
     /// Construct a new cache with a large amount
     /// of space.
-    pub fn new_large() -> Self { Self::new(Self::LARGE_SIZE) }
+    pub fn new_large() -> Self { Self::new(LARGE_SIZE) }
 
     /// Construct a new cache with a small amount
     /// of space.
-    pub fn new_small() -> Self { Self::new(Self::SMALL_SIZE) }
+    pub fn new_small() -> Self { Self::new(SMALL_SIZE) }
 
     /// Clear the table by filling it with EMPTY entries
     pub fn clear(&mut self) {
         self.table.fill(Entry::EMPTY);
     }
-
-    /// The size of the table in bytes
-    pub fn size_of(&self) -> usize {
-        size_of::<Entry>() * self.table.len()
-    }
 }
 
-
 impl<B: HashBoard + Position> Cache<B> {
-    /// Hash the given key into an index into
-    /// the inner table
-    fn hash(&self, key: u64) -> usize {
-        (key % self.max_count) as usize
-    }
-
     /// Tries to get the entry corresponding to the given board,
     /// returning `None` if it doesn't exist, `Some(bound_type, eval)`
     /// otherwise.
     pub fn get(&self, board: &B) -> Option<(BoundType, isize)> {
         let key = board.key();
-        let hash = self.hash(key);
+        let hash = hash(key, self.size);
         let entry = self.table[hash];
         let (bound, other_key, eval, _) = entry.unpack()?;
         match key == other_key {
@@ -205,13 +203,13 @@ impl<B: HashBoard + Position> Cache<B> {
     /// Insert the board into the cache with bound type and eval.
     /// MIN_EVAL <= eval <= MAX_EVAL
     pub fn insert(&mut self, bound: BoundType, board: &B, eval: isize) {
-        if board.move_count() > Self::MAX_CACHE_DEPTH { return; }
+        if board.move_count() > MAX_CACHE_DEPTH { return; }
 
         let key = board.key();
         let depth = board.move_count();
         let entry = Entry::pack(bound, key, eval, depth);
 
-        let hash = self.hash(key);
+        let hash = hash(key, self.size);
         let entry = Self::choose_entry(self.table[hash], entry);
         self.table[hash] = entry;
     }
@@ -238,11 +236,18 @@ impl<B: HashBoard + Position> Cache<B> {
     }
 }
 
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bench::END_EASY;
+    use crate::bench::*;
     use crate::board::*;
+
+    use std::collections::HashSet;
+
+    use statrs::distribution::ChiSquared;
+    use statrs::distribution::ContinuousCDF;
+    use statrs::statistics::Distribution;
 
     #[test]
     fn pack_unpack() {
@@ -257,5 +262,78 @@ mod tests {
             assert_eq!(*eval, eval_2, "(unpack∘pack)(eval) != eval for {eval}");
             assert_eq!(depth, depth_2, "(unpack∘pack)(depth) != depth for {depth}");
         }
+    }
+
+    fn chi_squared_test<B: HashBoard + CloneBoard + Position>(size: usize) {
+        let testsets = [&*END_EASY, &*MIDDLE_EASY, &*MIDDLE_MEDIUM,
+            &*BEGIN_EASY, &*BEGIN_MEDIUM, &*BEGIN_HARD, &*SOLVE
+        ];
+        let moveset = testsets.iter()
+            .map(|testset|
+                testset.iter().map(|(moves, _)| moves))
+            .flatten();
+
+        // ( (#positions(movesets)≈6000)
+        // * pow(column::COUNT, DEPTH=4) ) ≈ 10e6
+        const DEPTH: usize = 4;
+
+        let mut seen = HashSet::new();
+        let mut table: Vec<u32> = vec![0; size];
+        let mut visit = |pos: &B| {
+            let key = pos.key();
+            let idx = hash(key, size);
+
+            if seen.get(&key).is_none() {
+                table[idx] += 1;
+                seen.insert(key);
+            }
+        };
+
+        for moves in moveset {
+            let board = B::from_moves(moves);
+            board.dfs(board.curr(), DEPTH, &mut visit);
+        }
+
+        let n = table.iter().sum::<u32>();
+        let e = (n as f64) / (size as f64);
+        let df = size - 1;
+
+        let chi_sq = e.recip() * table.iter()
+            .map(|&o| o * o)
+            .sum::<u32>() as f64 - n as f64;
+
+        let dist = ChiSquared::new(df as f64).unwrap();
+        let p = dist.sf(chi_sq);
+
+        if p < 0.05 {
+            let min = table.iter().min().unwrap();
+            let max = table.iter().max().unwrap();
+
+            let mu = dist.mean().unwrap();
+            let sigma = dist.std_dev().unwrap();
+
+            println!("Failed chi-squared test.");
+            println!("n = {n}, size = {size}");
+            println!("e = {e}");
+            println!("min = {min}, max = {max}");
+            println!("chi_sq = {chi_sq}");
+            println!("chi_mean = {}, chi_stddev = {}", mu, sigma);
+            println!("z-score = {}", (chi_sq - mu)/sigma);
+
+            println!("p = {p}");
+            panic!("p < 0.05, failed for size: {size}");
+        }
+    }
+
+    #[test]
+    fn chi_squared_bitboard() {
+        chi_squared_test::<BitBoard>(SMALL_SIZE);
+        chi_squared_test::<BitBoard>(LARGE_SIZE);
+    }
+
+    #[test]
+    fn chi_squared_bitcols() {
+        chi_squared_test::<BitCols>(SMALL_SIZE);
+        chi_squared_test::<BitCols>(LARGE_SIZE);
     }
 }

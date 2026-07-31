@@ -87,12 +87,12 @@ impl Eq for SymmBoard {}
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::board::Moves;
-
-use super::*;
 
     make_board_tests!(SymmBoard);
     make_mut_board_tests!(SymmBoard);
+    make_hash_board_tests!(SymmBoard);
 
     #[test]
     fn test_symmetry() {

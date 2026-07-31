@@ -396,6 +396,7 @@ mod tests {
 
     make_board_tests!(BitBoard);
     make_mut_board_tests!(BitBoard);
+    make_hash_board_tests!(BitBoard);
 
     #[test]
     fn possible_is_possible() {

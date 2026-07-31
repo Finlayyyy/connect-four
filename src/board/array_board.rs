@@ -73,6 +73,5 @@ mod pos_tests {
     use crate::solver_utils::*;
 
     make_board_tests!(WithInfo<ArrayBoard>);
-
     make_mut_board_tests!(WithInfo<ArrayBoard>);
 }

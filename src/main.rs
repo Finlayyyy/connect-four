@@ -61,7 +61,7 @@ fn play(starting: bool) {
 fn bench_very_easy() {
     println!("BENCH VERY EASY");
     let bencher = bencher!(
-        100 from (END_EASY, MIDDLE_EASY) with Duration::from_secs(1)
+        100 from (END_EASY, MIDDLE_EASY) with Duration::from_secs(15)
     );
     bench!(bencher, WithInfo<ArrayBoard>, MinimaxMut);
     bench!(bencher, BitCols, MinimaxMut);
@@ -73,7 +73,7 @@ fn bench_very_easy() {
 fn bench_easy() {
     println!("BENCH EASY");
     let bencher = bencher!(
-        100 from (END_EASY, MIDDLE_EASY, MIDDLE_MEDIUM) with Duration::from_secs(5)
+        100 from (END_EASY, MIDDLE_EASY, MIDDLE_MEDIUM) with Duration::from_secs(15)
     );
 
     bench!(bencher, BitCols, MinimaxAlphaBeta);
@@ -139,6 +139,12 @@ fn bench_best() {
         bench!(bencher, BitBoard, Deepening<MinimaxQuick>);
         println!();
     }
+    {
+        let bencher = bencher!(
+            100 from (BEGIN_HARD) with Duration::from_mins(9));
+        bench!(bencher, BitBoard, Deepening<MinimaxQuick>);
+    }
+    println!("Preliminary test complete.");
     {
         let bencher = bencher!(
             (BEGIN_HARD) with Duration::from_mins(90));

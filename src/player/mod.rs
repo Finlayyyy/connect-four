@@ -34,7 +34,7 @@ impl Human {
             stdin().read_line(&mut input).expect("Failed to read line");
             input = input.trim().to_owned();
 
-            let mut chars = input.trim().chars().into_iter();
+            let mut chars = input.trim().chars();
             let Some(ch) = chars.next() else {
                 println!("Expected column index, found \"{input}\"");
                 continue;

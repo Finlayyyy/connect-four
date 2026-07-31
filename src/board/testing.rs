@@ -25,6 +25,13 @@ macro_rules! make_mut_board_tests {
     };
 }
 
+macro_rules! make_hash_board_tests {
+    ($b:ty) => {
+        make_test!($b, hash_board_tests, key_49_bits);
+        make_test!($b, hash_board_tests, key_unique);
+    }
+}
+
 pub mod board_tests {
     use super::*;
     use crate::board::Moves;
@@ -135,6 +142,32 @@ pub mod mut_board_tests {
                 board.place(col, token);
                 token = token.next();
             }
+        }
+    }
+}
+
+pub mod hash_board_tests {
+    use crate::bench::{BEGIN_EASY, END_EASY};
+    use crate::board::HashBoard;
+    use std::collections::HashMap;
+
+    pub fn key_49_bits<B: HashBoard>(name: &str) {
+        const MASK_49: u64 = (1 << 49) - 1;
+        for (moves, _) in END_EASY.iter().chain(BEGIN_EASY.iter()) {
+            let board = B::from_moves(moves);
+            assert!(board.key() & (!MASK_49) == 0,
+                "`{name}::key` returned a key that used more than 49 bits.");
+        }
+    }
+
+    pub fn key_unique<B: HashBoard>(name: &str) {
+        let mut keys = HashMap::new();
+        for (moves, _) in END_EASY.iter().chain(BEGIN_EASY.iter()) {
+            let board = B::from_moves(moves);
+            if let Some(other) = keys.get(&board.key()) {
+                assert!(board == *other, "`{name}::key` is not unique.");
+            }
+            keys.insert(board.key(), board);
         }
     }
 }
