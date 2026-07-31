@@ -26,7 +26,12 @@ Solve: `cargo run -r bench solve`
   Expect to take <= 90 mins in total (≈ 1000 five-second testcases !)
 
 ### Play
-todo!
+Play against the current best combination of solver and board (`Deepening<MinimaxQuick>` on `BitBoard` at the moment). At each step, the solver will display the range of evaluations it considers (from it immediately losing to it having immediately winning move). It will then display the evaluation it has calculated for each possible move (and then choose the best one !). 
+
+`cargo run -r play first`: the solver will take the first move.
+
+`cargo run -r play second`: the solver will take the second move.
+
 
 ## Todo
 - improve cache entry
