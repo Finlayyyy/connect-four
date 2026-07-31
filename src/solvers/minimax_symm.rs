@@ -1,5 +1,3 @@
-use std::iter::once;
-
 use crate::basic::*;
 use crate::board::{Board, CloneBoard, HashBoard};
 use crate::solver_utils::*;
@@ -125,7 +123,7 @@ impl SymmDiff {
         match self.0 {
             [0, 0, 0] => column::LEFT_SIDE
                 .into_iter()
-                .chain(once(column::Idx::CENTRE))
+                .chain(std::iter::once(column::Idx::CENTRE))
                 .filter_map(|col| {
                     let pos = pos.placed(col, pos.curr())?;
                     Some((col, pos))

@@ -269,6 +269,15 @@ pub trait CloneBoard: Board + Clone {
         }
         board
     }
+
+    fn dfs(&self, curr: Token, depth: usize, visit_leaf: &mut impl FnMut(&Self) -> ()) {
+        if depth == 0 {
+            return visit_leaf(self);
+        }
+        for (_, next) in self.nexts(curr) {
+            next.dfs(curr.next(), depth - 1, visit_leaf)
+        }
+    }
 }
 
 /// Trait for board implementations that don't have a cheap clone operation
