@@ -15,21 +15,21 @@ impl MinimaxCached {
         M: SolverManager,
     {
         boss.check()?;
-        if pos.full() { return ControlFlow::Continue(0); }
+        if pos.is_full() { return ControlFlow::Continue(0); }
 
-        if let Some((BoundType::Exact, score)) = cache.get(&pos) {
-            return ControlFlow::Continue(score);
+        if let Some((BoundType::Exact, eval)) = cache.get(&pos) {
+            return ControlFlow::Continue(eval);
         }
 
         let mut best = isize::MIN;
 
         for (col, next_pos) in pos.nexts(pos.curr()) {
             if next_pos.is_won_at_col(col) {
-                best = next_pos.just_won_score();
+                best = next_pos.just_won_eval();
                 break;
             }
-            let score = -Self::minimax(next_pos, boss, cache)?;
-            best = max(best, score);
+            let eval = -Self::minimax(next_pos, boss, cache)?;
+            best = max(best, eval);
         }
         cache.insert(BoundType::Exact, &pos, best);
         ControlFlow::Continue(best)

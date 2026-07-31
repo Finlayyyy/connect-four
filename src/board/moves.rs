@@ -21,7 +21,7 @@ impl Moves {
         let tokens = std::iter::successors(Some(Token::STARTING), |t| Some(t.next()));
         let cols = string
             .chars()
-            .map(|c| column::Idx::try_from(c.to_digit(10).unwrap() - 1).unwrap());
+            .map(|c| column::Idx::from_digit(c).unwrap());
         Moves {
             moves: cols.zip(tokens).collect(),
         }

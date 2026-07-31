@@ -17,18 +17,18 @@ impl MinimaxAlphaBeta {
         mut beta: isize,
     ) -> ControlFlow<M::Break, isize> {
         boss.check()?;
-        if pos.full() { return ControlFlow::Continue(0); }
+        if pos.is_full() { return ControlFlow::Continue(0); }
 
-        beta = min(beta, pos.will_win_score());
+        beta = min(beta, pos.eval());
         if alpha >= beta { return ControlFlow::Continue(beta); };
 
         for (col, next_pos) in pos.nexts(pos.curr()) {
             if next_pos.is_won_at_col(col) {
-                return ControlFlow::Continue(next_pos.just_won_score());
+                return ControlFlow::Continue(next_pos.just_won_eval());
             }
-            let score = -Self::minimax(&next_pos, boss, -beta, -alpha)?;
-            if score >= beta { return ControlFlow::Continue(score); }
-            alpha = max(alpha, score);
+            let eval = -Self::minimax(&next_pos, boss, -beta, -alpha)?;
+            if eval >= beta { return ControlFlow::Continue(eval); }
+            alpha = max(alpha, eval);
         }
         ControlFlow::Continue(alpha)
     }
@@ -39,7 +39,7 @@ impl<P: Position + CloneBoard> Solver<P> for MinimaxAlphaBeta {
         boss: &mut M,
         _cache: &mut Cache<P>,
     ) -> ControlFlow<M::Break, isize> {
-        Self::minimax(&pos, boss, pos.will_lose_score(), pos.will_win_score())
+        Self::minimax(&pos, boss, pos.will_lose_eval(), pos.eval())
     }
 }
 

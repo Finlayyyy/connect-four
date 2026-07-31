@@ -15,28 +15,28 @@ impl MinimaxMut {
     ) -> ControlFlow<M::Break, isize> {
         boss.check()?;
 
-        if pos.full() {
+        if pos.is_full() {
             return ControlFlow::Continue(0);
         }
 
-        let mut best_score = isize::MIN;
+        let mut best = isize::MIN;
 
         for col in column::CENTRED {
             let Some(cell) = pos.place_curr(col) else {
                 continue;
             };
             if pos.is_won_at(cell) {
-                let score = pos.just_won_score();
+                let eval = pos.just_won_eval();
                 pos.unplace(col);
-                return ControlFlow::Continue(score);
+                return ControlFlow::Continue(eval);
             }
 
-            let score = -Self::minimax(pos, boss)?;
+            let eval = -Self::minimax(pos, boss)?;
             pos.unplace(col);
-            best_score = max(best_score, score);
+            best = max(best, eval);
         }
 
-        ControlFlow::Continue(best_score)
+        ControlFlow::Continue(best)
     }
 }
 
@@ -57,21 +57,21 @@ impl MinimaxClone {
     ) -> ControlFlow<M::Break, isize> {
         boss.check()?;
 
-        if pos.full() {
+        if pos.is_full() {
             return ControlFlow::Continue(0);
         }
 
-        let mut best_score = isize::MIN;
+        let mut best = isize::MIN;
 
         for (col, next_pos) in pos.nexts(pos.curr()) {
             if next_pos.is_won_at_col(col) {
-                return ControlFlow::Continue(next_pos.just_won_score());
+                return ControlFlow::Continue(next_pos.just_won_eval());
             }
 
-            let score = -Self::minimax(next_pos, boss)?;
-            best_score = max(best_score, score);
+            let eval = -Self::minimax(next_pos, boss)?;
+            best = max(best, eval);
         }
-        ControlFlow::Continue(best_score)
+        ControlFlow::Continue(best)
     }
 }
 

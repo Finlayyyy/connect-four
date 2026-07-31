@@ -69,10 +69,10 @@ impl<P: Position + CloneBoard + HashBoard> ABSolver<P> for MinimaxAvoidant {
         mut beta: isize,
     ) -> ControlFlow<M::Break, isize> {
         boss.check()?;
-        if pos.full() { return ControlFlow::Continue(0); }
+        if pos.is_full() { return ControlFlow::Continue(0); }
         let prev_alpha = alpha;
 
-        (alpha, beta) = cache.get_check(&pos, alpha, beta);
+        (alpha, beta) = cache.get_and_bound(&pos, alpha, beta);
         if alpha >= beta { return ControlFlow::Continue(beta); }
 
         let mut moves = MoveSorter::<{ column::COUNT }, _, _>::new();
@@ -82,7 +82,7 @@ impl<P: Position + CloneBoard + HashBoard> ABSolver<P> for MinimaxAvoidant {
         for cell in pos.next_cells() {
             match MoveResult::new_at(&pos, cell) {
                 // curr has at least one immediately winning move
-                MoveResult::CurrWin => return ControlFlow::Continue(pos.will_win_score()),
+                MoveResult::CurrWin => return ControlFlow::Continue(pos.eval()),
                 // opponent has at least one winning move next turn
                 MoveResult::BlockOppWin if must_play.is_none() => must_play = Some(cell.col),
                 // opponent has at least two winning moves next turn, thus curr has lost.
@@ -95,7 +95,7 @@ impl<P: Position + CloneBoard + HashBoard> ABSolver<P> for MinimaxAvoidant {
         }
 
         if will_lose || (moves.is_empty() && must_play.is_none()) {
-            return ControlFlow::Continue(pos.will_lose_score());
+            return ControlFlow::Continue(pos.will_lose_eval());
         };
 
         // We must play in this column either to stop the opponent from winning,
@@ -104,25 +104,25 @@ impl<P: Position + CloneBoard + HashBoard> ABSolver<P> for MinimaxAvoidant {
             moves = MoveSorter::singleton(0, col);
         }
 
-        alpha = max(alpha, pos.will_lose_score() + 1);
-        beta = min(beta, pos.will_win_score() - 1);
+        alpha = max(alpha, pos.will_lose_eval() + 1);
+        beta = min(beta, pos.eval() - 1);
         if alpha >= beta { return ControlFlow::Continue(beta); }
 
         for col in moves {
             let next_pos = pos.placed(col, pos.curr()).unwrap();
-            let score = -Self::minimax(next_pos, boss, cache, -beta, -alpha)?;
-            alpha = max(alpha, score);
+            let eval = -Self::minimax(next_pos, boss, cache, -beta, -alpha)?;
+            alpha = max(alpha, eval);
             if alpha >= beta { break; }
         }
 
-        cache.insert_check(&pos, prev_alpha, alpha, beta);
+        cache.insert_bounded(&pos, prev_alpha, alpha, beta);
         ControlFlow::Continue(alpha)
     }
 }
 impl<P: Position + CloneBoard + HashBoard> Solver<P> for MinimaxAvoidant {
     fn solve<M: SolverManager>(pos: P, boss: &mut M, cache: &mut Cache<P>) -> ControlFlow<M::Break, isize> {
-        let min = pos.will_lose_score();
-        let max = pos.will_win_score();
+        let min = pos.will_lose_eval();
+        let max = pos.eval();
         Self::minimax(pos, boss, cache, min, max)
     }
 }

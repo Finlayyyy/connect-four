@@ -35,7 +35,7 @@ pub trait Solver<P> {
         let mut boss = LaissezFaire { };
         let mut cache = Cache::new_small();
         match Self::solve(pos, &mut boss, &mut cache) {
-            ControlFlow::Continue(score) => score
+            ControlFlow::Continue(eval) => eval
         }
     }
 }

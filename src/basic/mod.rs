@@ -122,6 +122,17 @@ pub mod column {
         pub fn to_digit(self) -> char {
             char::from_digit(1 + u32::from(self), 10).unwrap()
         }
+
+        /// Creates a column from a 1-indexed digit
+        pub fn from_digit(ch: char) -> Result<Self, String> {
+            let digit = ch.to_digit(10)
+                .ok_or(format!("Could not convert `{ch}` to a base-10 digit."))?;
+            let digit = digit.checked_sub_signed(1)
+                .ok_or(format!("Could not convert `{ch}`= 0 into a `column::Idx`"))?;
+
+            column::Idx::try_from(digit)
+                .map_err(|_| format!("Could not convert `{ch}` into a `column::Idx`"))
+        }
     }
 
     impl Display for Idx {

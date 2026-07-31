@@ -166,15 +166,15 @@ pub trait Board: Debug + Sized + Eq {
     /// Pretty display to string
     fn to_display(&self) -> String {
         let mut string = String::new();
-
+        println!("_ 1 2 3 4 5 6 7 _");
         for &row in row::BOTTOM_UP.iter().rev() {
-            string.push('|');
+            string.push_str("| ");
             for col in column::COLUMNS {
                 let cell = Cell { col, row };
                 match self.get(cell) {
-                    Some(Token::B) => string.push('O'),
-                    Some(Token::A) => string.push('X'),
-                    None => string.push('⋅'),
+                    Some(Token::B) => string.push_str("O "),
+                    Some(Token::A) => string.push_str("X "),
+                    None => string.push_str("⋅ "),
                 }
             }
             string.push_str("|\n");
@@ -185,7 +185,7 @@ pub trait Board: Debug + Sized + Eq {
 
     /// Pretty prints the board to stdout.
     fn display(&self) {
-        print!("{}", self.to_display());
+        println!("{}", self.to_display());
     }
 
     /// Read a board from a visual string representation.
@@ -196,11 +196,12 @@ pub trait Board: Debug + Sized + Eq {
                 continue;
             }
 
-            for (ch, col) in line.chars().zip(column::COLUMNS) {
+
+            for (ch, col) in line.replace(" ", "").chars().zip(column::COLUMNS) {
                 let token = match ch {
                     'A' | 'X' => Token::A,
                     'B' | 'O' => Token::B,
-                    '⋅' | ' ' => continue,
+                    '⋅' => continue,
                     '+' | '-' => break,
                     ch => panic!("Invalid character in board string: '{}'", ch),
                 };

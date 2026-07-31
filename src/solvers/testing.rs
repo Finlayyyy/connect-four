@@ -1,6 +1,6 @@
 use std::ops::ControlFlow;
 
-use crate::benching::END_EASY;
+use crate::bench::END_EASY;
 use crate::solver_utils::*;
 use crate::solvers::Solver;
 
@@ -36,7 +36,7 @@ pub fn run_easy_tests<P: Position, S: Solver<P>>(count: usize) {
 
     for (moves, correct) in END_EASY.iter().take(count) {
         let pos = P::from_moves(moves);
-        let ControlFlow::Continue(score) = S::solve(pos, &mut boss, &mut cache);
-        assert_eq!(score, *correct, "Solver failed moveset {moves}");
+        let ControlFlow::Continue(eval) = S::solve(pos, &mut boss, &mut cache);
+        assert_eq!(eval, *correct, "Solver failed moveset {moves}");
     }
 }

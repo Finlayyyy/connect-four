@@ -3,10 +3,10 @@ use crate::board::*;
 
 /// Maximum possible number of moves in a game
 pub const MAX_MOVES: usize = Cell::COUNT;
-/// Minimum possible position score
-pub const MIN_SCORE: isize = -(MAX_MOVES as isize) / 2 + 3;
-/// Maximum possible position score
-pub const MAX_SCORE: isize = (MAX_MOVES as isize + 1) / 2 - 3;
+/// Minimum possible position eval score
+pub const MIN_EVAL: isize = -(MAX_MOVES as isize) / 2 + 3;
+/// Maximum possible position eval score
+pub const MAX_EVAL: isize = (MAX_MOVES as isize + 1) / 2 - 3;
 
 pub trait Position: Board {
     /// Number of moves made in the game
@@ -14,7 +14,7 @@ pub trait Position: Board {
 
     /// Has the game run out of empty cells?
     #[inline(always)]
-    fn full(&self) -> bool {
+    fn is_full(&self) -> bool {
         self.move_count() == MAX_MOVES
     }
 
@@ -25,20 +25,20 @@ pub trait Position: Board {
         MAX_MOVES - self.move_count()
     }
 
-    /// Score if the next move is a win for the current
+    /// Eval score if the next move is a win for the current
     /// player
-    fn will_win_score(&self) -> isize {
+    fn eval(&self) -> isize {
         ((MAX_MOVES + 1 - self.move_count()) / 2) as isize
     }
 
-    /// Score if the opponent will win on their next move
-    fn will_lose_score(&self) -> isize {
+    /// Eval score if the opponent will win on their next move
+    fn will_lose_eval(&self) -> isize {
         -((MAX_MOVES - self.move_count()) as isize / 2)
     }
 
-    /// Score if the position was just won on the
+    /// Eval score if the position was just won on the
     /// previous move
-    fn just_won_score(&self) -> isize {
+    fn just_won_eval(&self) -> isize {
         ((MAX_MOVES + 2 - self.move_count()) / 2) as isize
     }
 

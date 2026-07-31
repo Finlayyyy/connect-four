@@ -23,28 +23,28 @@ impl MinimaxSymm {
         diffs: SymmDiff,
     ) -> ControlFlow<M::Break, isize> {
         boss.check()?;
-        if pos.full() { return ControlFlow::Continue(0); }
+        if pos.is_full() { return ControlFlow::Continue(0); }
         let prev_alpha = alpha;
 
-        beta = min(beta, pos.will_win_score());
-        (alpha, beta) = cache.get_check(&pos, alpha, beta);
+        beta = min(beta, pos.eval());
+        (alpha, beta) = cache.get_and_bound(&pos, alpha, beta);
         if alpha >= beta { return ControlFlow::Continue(beta); }
 
         for (diffs, col, next_pos) in diffs.nexts(&pos) {
             if next_pos.is_won_at_col(col) {
-                alpha = next_pos.just_won_score();
+                alpha = next_pos.just_won_eval();
                 break;
             }
 
-            let score = -match diffs {
+            let eval = -match diffs {
                 None => MinimaxABCached::minimax(next_pos, boss, cache, -beta, -alpha)?,
                 Some(diffs) => Self::minimax(next_pos, boss, cache, -beta, -alpha, diffs)?,
             };
-            alpha = max(alpha, score);
+            alpha = max(alpha, eval);
             if alpha >= beta { break; }
         }
 
-        cache.insert_check(&pos, prev_alpha, alpha, beta);
+        cache.insert_bounded(&pos, prev_alpha, alpha, beta);
         ControlFlow::Continue(alpha)
     }
 }
@@ -55,8 +55,8 @@ impl<P: Position + CloneBoard + HashBoard> Solver<P> for MinimaxSymm {
         boss: &mut M,
         cache: &mut Cache<P>,
     ) -> ControlFlow<M::Break, isize> {
-        let alpha = pos.will_lose_score();
-        let beta = pos.will_win_score();
+        let alpha = pos.will_lose_eval();
+        let beta = pos.eval();
         match SymmDiff::new(&pos) {
             None => MinimaxABCached::solve(pos, boss, cache),
             Some(diffs) => Self::minimax(pos, boss, cache, alpha, beta, diffs),

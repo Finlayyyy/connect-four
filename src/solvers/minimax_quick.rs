@@ -20,12 +20,16 @@ impl ABSolver<BitBoard> for MinimaxQuick {
         mut alpha: isize,
         mut beta: isize,
     ) -> ControlFlow<M::Break, isize> {
-        boss.check()?;
-        if pos.full() { return ControlFlow::Continue(0); }
         debug_assert!(!pos.curr_can_win());
 
+        boss.check()?;
+        if pos.is_full() { return ControlFlow::Continue(0); }
+
+        (alpha, beta) = cache.get_and_bound(&pos, alpha, beta);
+        if alpha >= beta {return ControlFlow::Continue(beta); }
+
         let Ok(nexts) = pos.possible_nonlosing_nexts() else {
-            return ControlFlow::Continue(pos.will_lose_score());
+            return ControlFlow::Continue(pos.will_lose_eval());
         };
 
         // With at most 2 moves remaining and no win for curr
@@ -37,27 +41,26 @@ impl ABSolver<BitBoard> for MinimaxQuick {
             .collect();
 
         let prev_alpha = alpha;
-        alpha = max(alpha, pos.will_lose_score() + 1);
-        beta = min(beta, pos.will_win_score() - 1);
-        (alpha, beta) = cache.get_check(&pos, alpha, beta);
+        alpha = max(alpha, pos.will_lose_eval() + 1);
+        beta = min(beta, pos.eval() - 1);
         if alpha >= beta {return ControlFlow::Continue(beta); }
 
         for col in moves {
             let next_pos = pos.placed_curr_unchecked(col);
-            let score = -Self::minimax(next_pos, boss, cache, -beta, -alpha)?;
-            alpha = max(alpha, score);
+            let eval = -Self::minimax(next_pos, boss, cache, -beta, -alpha)?;
+            alpha = max(alpha, eval);
             if alpha >= beta { break; }
         }
 
-        cache.insert_check(&pos, prev_alpha, alpha, beta);
+        cache.insert_bounded(&pos, prev_alpha, alpha, beta);
         ControlFlow::Continue(alpha)
     }
 }
 
 impl Solver<BitBoard> for MinimaxQuick {
     fn solve<M: SolverManager>(pos: BitBoard, boss: &mut M, cache: &mut Cache<BitBoard>) -> ControlFlow<M::Break, isize> {
-        let min = pos.will_lose_score();
-        let max = pos.will_win_score();
+        let min = pos.will_lose_eval();
+        let max = pos.eval();
         Self::minimax(pos, boss, cache, min, max)
     }
 }

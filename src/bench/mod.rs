@@ -10,7 +10,7 @@ use crate::solver_utils::*;
 use crate::solvers::Solver;
 
 /// A testset with a name and vec of tests,
-/// a pair of Moves and true score
+/// a pair of Moves and true eval
 #[derive(Debug, Clone)]
 pub struct TestSet {
     name: String,
@@ -29,13 +29,13 @@ impl TestSet {
             assert!(test.len() == 2);
 
             let moves = test[0];
-            let score = test[1];
+            let eval = test[1];
 
             assert!(moves.chars().all(|c| c.is_ascii_digit()));
             let moves = Moves::from_string(moves);
-            let s = score
+            let s = eval
                 .parse::<isize>()
-                .unwrap_or_else(|_| panic!("Invalid token in moves file: {}", score));
+                .unwrap_or_else(|_| panic!("Invalid token in moves file: {}", eval));
             tests.push((moves, s));
         }
         tests
@@ -180,8 +180,8 @@ impl Bencher {
 
             let (dur_len, dur_sum) = testset
                 .iter()
-                .map_while(|(moves, score)| {
-                    bench_func_on::<S, _, _>(&mut boss, &mut cache, moves, *score)
+                .map_while(|(moves, eval)| {
+                    bench_func_on::<S, _, _>(&mut boss, &mut cache, moves, *eval)
                 })
                 .fold((0, 0), |(l, s), dur| (l + 1, s + dur));
 
@@ -226,11 +226,11 @@ where
     let pos = P::from_moves(moves);
 
     let start = Instant::now();
-    let ControlFlow::Continue(score) = S::solve(pos, boss, cache) else {
+    let ControlFlow::Continue(eval) = S::solve(pos, boss, cache) else {
         return None;
     };
     let dur = start.elapsed().as_millis();
 
-    assert_eq!(score, correct, "Score assertion failed for moves {}", moves);
+    assert_eq!(eval, correct, "Eval assertion failed for moves {}", moves);
     Some(usize::try_from(dur).unwrap())
 }

@@ -28,7 +28,7 @@ macro_rules! make_mut_board_tests {
 pub mod board_tests {
     use super::*;
     use crate::board::Moves;
-    use crate::benching::END_EASY;
+    use crate::bench::END_EASY;
 
     pub fn empty_is_empty<B: Board>(name: &str) {
         let empty = B::EMPTY;

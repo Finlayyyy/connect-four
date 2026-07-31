@@ -219,7 +219,7 @@ impl BitBoard {
         false
     }
 
-    /// Heuristic to order move exploration. A higher score represents
+    /// Heuristic to order move exploration. A higher value represents
     /// a better position for the current player.
     #[inline]
     pub fn heuristic(&self) -> isize {
@@ -392,7 +392,7 @@ impl Debug for BitBoard {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::benching::END_EASY;
+    use crate::bench::END_EASY;
 
     make_board_tests!(BitBoard);
     make_mut_board_tests!(BitBoard);

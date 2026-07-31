@@ -35,19 +35,19 @@ impl<const N: usize, K: Ord, T> MoveSorter<N, K, T> {
         MoveSorter { len: 1, elems }
     }
 
-    /// Add the elem and sort descending by the given score
-    pub fn push_sorting(&mut self, score: K, elem: T) {
+    /// Add the elem and sort descending by the given eval
+    pub fn push_sorting(&mut self, eval: K, elem: T) {
         debug_assert!(self.len < N);
         let mut i = self.len;
         // SAFETY: All elements in 0..len are guaranteed to be initialised.
         unsafe {
-            while (i > 0) && (self.elems[i - 1].assume_init_ref().0 < score) {
+            while (i > 0) && (self.elems[i - 1].assume_init_ref().0 < eval) {
                 let prev = self.elems[i - 1].assume_init_read();
                 self.elems[i] = MaybeUninit::new(prev);
                 i -= 1;
             }
         }
-        self.elems[i] = MaybeUninit::new((score, elem));
+        self.elems[i] = MaybeUninit::new((eval, elem));
         self.len += 1;
     }
 }

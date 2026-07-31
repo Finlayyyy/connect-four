@@ -31,4 +31,5 @@ todo!
 ## Todo
 - check hash table statistical distribution
 - add hashboard tests
-- decide whether to store depth in cache
+- order cache check in MinimaxQuick
+- add Hasher to Cache (+ depth comparison)
