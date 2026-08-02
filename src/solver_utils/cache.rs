@@ -19,22 +19,23 @@ const MAX_CACHE_DEPTH: usize = position::MAX_MOVES - 5;
 
 /// An older entry must have a depth (move count)
 /// `old <= new - DEPTH_DIFF` to avoid being replaced.
-const DEPTH_DIFF: u32 = 10;
+const DEPTH_DIFF: u16 = 10;
 
 // Hash the given `key` into an index into
 /// the inner table with `size` buckets
 fn hash(key: u64, size: usize) -> usize {
-    let mut hasher = AHasher::default();
-    hasher.write_u64(key);
-    (hasher.finish() as usize) % size
+    (key as usize) % size
+    // let mut hasher = AHasher::default();
+    // hasher.write_u64(key);
+    // (hasher.finish() as usize) % size
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct Entry {
     /// Board key (hash)
     pub key: u32,
-    /// Entry age
-    pub _age: u16, // currently unused
+    /// Entry depth (move count)
+    pub depth: u16,
     /// Lower bound evaluation
     pub lower: i8,
     /// Upper bound evaluation
@@ -42,17 +43,17 @@ struct Entry {
 }
 
 impl Entry {
-    pub fn new(key: u64, lower: isize, upper: isize) -> Self {
+    pub fn new(key: u64, depth: usize, lower: isize, upper: isize) -> Self {
         Entry {
             key: key as u32,
-            _age: 0,
+            depth: u16::try_from(depth).unwrap(),
             lower: i8::try_from(lower).unwrap(),
             upper: i8::try_from(upper).unwrap()
         }
     }
     /// An empty entry
     pub const fn empty() -> Self {
-        Entry { key: 0, _age: 0, lower: i8::MIN, upper: i8::MAX }
+        Entry { key: 0, depth: 0, lower: i8::MIN, upper: i8::MAX }
     }
     /// Is the entry empty
     pub const fn is_empty(&self) -> bool {
@@ -68,12 +69,6 @@ impl Entry {
         }
     }
 
-    /// Count the number of ones (popcount) in `entry.key`.
-    /// Can be used as a proxy for move count
-    pub const fn count_ones(&self) -> u32 {
-        self.key.count_ones()
-    }
-
     /// Given a hash collision with pre-existing entry and a new entry,
     /// choose which entry should take the place.
     pub fn consider_replace(&mut self, new: Self) {
@@ -86,7 +81,7 @@ impl Entry {
         // Determine which key (board) is more valuable to
         // have in the cache.
         if self.key != new.key {
-            if new.count_ones() <= DEPTH_DIFF + self.count_ones() {
+            if new.depth <= DEPTH_DIFF + self.depth {
                 *self = new;
             }
         } else {
@@ -164,7 +159,7 @@ impl<B: HashBoard + Position> Cache<B> {
         if board.move_count() > MAX_CACHE_DEPTH { return; }
 
         let key = board.key();
-        let entry = Entry::new(key, lower, upper);
+        let entry = Entry::new(key, board.move_count(), lower, upper);
 
         let hash = hash(key, self.size);
         self.table[hash].consider_replace(entry);
