@@ -29,4 +29,6 @@ Solve: `cargo run -r bench solve`
 todo!
 
 ## Todo
-- improve cache entry
+- Don't cache bounds equal to pos.will_lose_score() or pos.will_win_score() (?)
+- How to use age in Entry
+- Is .count_ones() slow?

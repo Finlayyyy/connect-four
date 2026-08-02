@@ -4,96 +4,7 @@ use crate::solver_utils::{Position, position};
 use ahash::AHasher;
 use std::marker::PhantomData;
 use std::hash::Hasher;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BoundType {
-    Lower,
-    Upper,
-    Exact,
-}
-
-impl std::ops::Neg for BoundType {
-    type Output = Self;
-
-    fn neg(self) -> Self::Output {
-        match self {
-            BoundType::Lower => BoundType::Upper,
-            BoundType::Exact => BoundType::Exact,
-            BoundType::Upper => BoundType::Lower
-        }
-    }
-}
-
-impl BoundType {
-    /// Bitrep of an EMPTY BoundType
-    pub const EMPTY: u64 = 0;
-
-    /// Pack into 2 bits
-    pub const fn pack(self) -> u64 {
-        match self {
-            BoundType::Lower => 0b01,
-            BoundType::Upper => 0b10,
-            BoundType::Exact => 0b11,
-        }
-    }
-    /// Try to unpack the 2 lowest bits into an BoundType
-    pub const fn unpack(entry: u64) -> Option<Self> {
-        match entry {
-            0b00 => None,
-            0b01 => Some(BoundType::Lower),
-            0b10 => Some(BoundType::Upper),
-            0b11 => Some(BoundType::Exact),
-            _ => panic!("Invalid packed BoundType"),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct Entry(u64);
-
-impl Entry {
-    const BOUND_BITS: u64 = 2;
-    const KEY_BITS: u64 = 49;
-    const EVAL_BITS: u64 = 6;
-    const DEPTH_BITS: u64 = 6;
-
-    const BOUND_MASK: u64 = (1 << Self::BOUND_BITS) - 1;
-    const KEY_MASK: u64 = (1 << Self::KEY_BITS) - 1;
-    const EVAL_MASK: u64 = (1 << Self::EVAL_BITS) - 1;
-    const DEPTH_MASK: u64 = (1 << Self::DEPTH_BITS) - 1;
-
-    const KEY_OFFSET: u64 = Self::BOUND_BITS;
-    const EVAL_OFFSET: u64 = Self::KEY_BITS + Self::KEY_OFFSET;
-    const DEPTH_OFFSET: u64 = Self::EVAL_BITS + Self::EVAL_OFFSET;
-
-    /// An empty entry
-    pub const EMPTY: Self = Entry(BoundType::EMPTY);
-
-    /// Pack the inputs into a single Entry (u64)
-    pub fn pack(bound: BoundType, key: u64, eval: isize, depth: usize) -> Self {
-        let bound = bound.pack();
-        debug_assert!(bound & (!Self::BOUND_MASK) == 0);
-        debug_assert!(key & (!Self::KEY_MASK) == 0);
-        let eval = u64::try_from(eval - position::MIN_EVAL).unwrap();
-        debug_assert!(eval & (!Self::EVAL_MASK) == 0);
-        let depth = u64::try_from(depth).unwrap();
-        debug_assert!(depth & (!Self::DEPTH_MASK) == 0);
-
-        Entry(bound | (key << Self::KEY_OFFSET) | (eval << Self::EVAL_OFFSET) | (depth << Self::DEPTH_OFFSET))
-    }
-
-    /// Unpack the Entry and return the orignal elements
-    pub fn unpack(&self) -> Option<(BoundType, u64, isize, usize)> {
-        let entry = self.0;
-        let bound = BoundType::unpack(self.0 & Self::BOUND_MASK)?;
-        let key = (entry >> Self::KEY_OFFSET) & Self::KEY_MASK;
-        let eval = (entry >> Self::EVAL_OFFSET) & Self::EVAL_MASK;
-        let eval = isize::try_from(eval).unwrap() + position::MIN_EVAL;
-        let depth = (entry >> Self::DEPTH_OFFSET) & Self::DEPTH_MASK;
-        let depth = usize::try_from(depth).unwrap();
-        Some((bound, key, eval, depth))
-    }
-}
+use std::cmp::{min, max};
 
 /// Very large prime number for hash table size
 /// * sizeof::<u64>() = ~400MB
@@ -106,12 +17,84 @@ const SMALL_SIZE: usize = 393241;
 /// Any entry with a greater depth will not be inserted
 const MAX_CACHE_DEPTH: usize = position::MAX_MOVES - 5;
 
+/// An older entry must have a depth (move count)
+/// `old <= new - DEPTH_DIFF` to avoid being replaced.
+const DEPTH_DIFF: u32 = 10;
+
 // Hash the given `key` into an index into
 /// the inner table with `size` buckets
 fn hash(key: u64, size: usize) -> usize {
     let mut hasher = AHasher::default();
     hasher.write_u64(key);
     (hasher.finish() as usize) % size
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Entry {
+    /// Board key (hash)
+    pub key: u32,
+    /// Entry age
+    pub _age: u16, // currently unused
+    /// Lower bound evaluation
+    pub lower: i8,
+    /// Upper bound evaluation
+    pub upper: i8,
+}
+
+impl Entry {
+    pub fn new(key: u64, lower: isize, upper: isize) -> Self {
+        Entry {
+            key: key as u32,
+            _age: 0,
+            lower: i8::try_from(lower).unwrap(),
+            upper: i8::try_from(upper).unwrap()
+        }
+    }
+    /// An empty entry
+    pub const fn empty() -> Self {
+        Entry { key: 0, _age: 0, lower: i8::MIN, upper: i8::MAX }
+    }
+    /// Is the entry empty
+    pub const fn is_empty(&self) -> bool {
+        self.lower == i8::MIN && self.upper == i8::MAX
+    }
+    /// Returns `None` if the entry is empty, otherwise
+    /// `Some(self)`.
+    pub const fn nonempty(self) -> Option<Self> {
+        if self.is_empty() {
+            None
+        } else {
+            Some(self)
+        }
+    }
+
+    /// Count the number of ones (popcount) in `entry.key`.
+    /// Can be used as a proxy for move count
+    pub const fn count_ones(&self) -> u32 {
+        self.key.count_ones()
+    }
+
+    /// Given a hash collision with pre-existing entry and a new entry,
+    /// choose which entry should take the place.
+    pub fn consider_replace(&mut self, new: Self) {
+        debug_assert!(!new.is_empty());
+        if self.is_empty() {
+            *self = new;
+            return;
+        }
+
+        // Determine which key (board) is more valuable to
+        // have in the cache.
+        if self.key != new.key {
+            if new.count_ones() <= DEPTH_DIFF + self.count_ones() {
+                *self = new;
+            }
+        } else {
+            debug_assert!(self.lower <= new.lower || self.upper >= new.upper);
+            self.lower = max(self.lower, new.lower);
+            self.upper = min(self.upper, new.upper);
+        }
+    }
 }
 
 /// Transposition Table Cache
@@ -121,12 +104,13 @@ pub struct Cache<B> {
     size: usize,
     pd: PhantomData<B>
 }
+
 impl<B> Cache<B> {
     /// Construct a new cache with the given amount
     /// of space
     pub fn new(size: usize) -> Self {
         Cache {
-            table: vec![Entry::EMPTY; size],
+            table: vec![Entry::empty(); size],
             size,
             pd: PhantomData
         }
@@ -142,21 +126,21 @@ impl<B> Cache<B> {
 
     /// Clear the table by filling it with EMPTY entries
     pub fn clear(&mut self) {
-        self.table.fill(Entry::EMPTY);
+        self.table.fill(Entry::empty());
     }
 }
 
 impl<B: HashBoard + Position> Cache<B> {
     /// Tries to get the entry corresponding to the given board,
-    /// returning `None` if it doesn't exist, `Some(bound_type, eval)`
+    /// returning `None` if it doesn't exist, `Some(lower, upper)`
     /// otherwise.
-    pub fn get(&self, board: &B) -> Option<(BoundType, isize)> {
+    pub fn get(&self, board: &B) -> Option<(isize, isize)> {
         let key = board.key();
         let hash = hash(key, self.size);
-        let entry = self.table[hash];
-        let (bound, other_key, eval, _) = entry.unpack()?;
-        match key == other_key {
-            true => Some((bound, eval)),
+
+        let entry = self.table[hash].nonempty()?;
+        match key as u32 == entry.key {
+            true => Some((entry.lower as isize, entry.upper as isize)),
             false => None,
         }
     }
@@ -165,53 +149,25 @@ impl<B: HashBoard + Position> Cache<B> {
     /// update the given bounds and return them as (alpha, beta)
     #[inline(always)]
     pub fn get_and_bound(&self, board: &B, alpha: isize, beta: isize) -> (isize, isize) {
-        match self.get(board) {
-            Some((BoundType::Lower, eval)) if eval > alpha => (eval, beta),
-            Some((BoundType::Upper, eval)) if eval < beta => (alpha, eval),
-            Some((BoundType::Exact, eval)) => (eval, eval),
-            _ => (alpha, beta)
-        }
+        let Some((lower, upper)) = self.get(board) else {
+            return (alpha, beta);
+        };
+        let alpha = max(alpha, lower);
+        let beta = min(beta, upper);
+        (alpha, beta)
     }
 
-    /// Given a hash collision with pre-existing entry and a new entry,
-    /// choose which entry should take the place.
-    fn choose_entry(old: Entry, new: Entry) -> Entry {
-        let Some((old_bound, old_key, old_eval, old_depth)) = old.unpack() else {
-            return new;
-        };
-        let Some((new_bound, new_key, new_eval, new_depth)) = new.unpack() else {
-            return old;
-        };
 
-        if old_key != new_key {
-            if new_depth <= 10  + old_depth {
-                return new;
-            } else {
-                return old;
-            }
-        }
-        if old_bound == BoundType::Exact { return old; }
-        if new_bound == BoundType::Exact { return new; }
-
-        if old_bound == -new_bound && old_eval == new_eval {
-            return Entry::pack(BoundType::Exact, new_key, new_eval, new_depth);
-        }
-
-        new
-    }
-
-    /// Insert the board into the cache with bound type and eval.
+    /// Insert the board into the cache with lower and upper bound
     /// MIN_EVAL <= eval <= MAX_EVAL
-    pub fn insert(&mut self, bound: BoundType, board: &B, eval: isize) {
+    pub fn insert(&mut self, board: &B, lower: isize, upper: isize) {
         if board.move_count() > MAX_CACHE_DEPTH { return; }
 
         let key = board.key();
-        let depth = board.move_count();
-        let entry = Entry::pack(bound, key, eval, depth);
+        let entry = Entry::new(key, lower, upper);
 
         let hash = hash(key, self.size);
-        let entry = Self::choose_entry(self.table[hash], entry);
-        self.table[hash] = entry;
+        self.table[hash].consider_replace(entry);
     }
 
     /// Given a board with an initial alpha, best eval (updated alpha)
@@ -225,14 +181,17 @@ impl<B: HashBoard + Position> Cache<B> {
         best: isize,
         beta: isize,
     ) {
-        let bound = if best <= prev_alpha {
-            BoundType::Upper
+        let mut lower = i8::MIN as isize;
+        let mut upper = i8::MAX as isize;
+        if best <= prev_alpha {
+            upper = best;
         } else if best >= beta {
-            BoundType::Lower
+            lower = best;
         } else {
-            BoundType::Exact
-        };
-        self.insert(bound, board, best);
+            lower = best;
+            upper = best;
+        }
+        self.insert(board, lower, upper);
     }
 }
 
@@ -248,21 +207,6 @@ mod tests {
     use statrs::distribution::ChiSquared;
     use statrs::distribution::ContinuousCDF;
     use statrs::statistics::Distribution;
-
-    #[test]
-    fn pack_unpack() {
-        for (moves, eval) in &*END_EASY {
-            let bound = BoundType::Exact;
-            let board = BitCols::from_moves(moves);
-            let key = board.key();
-            let depth = board.move_count();
-            let entry = Entry::pack(bound, key, *eval, depth);
-            let (_kind_2, key_2, eval_2, depth_2) = entry.unpack().unwrap();
-            assert_eq!(key, key_2, "(unpack∘pack)(key) != key for {key}");
-            assert_eq!(*eval, eval_2, "(unpack∘pack)(eval) != eval for {eval}");
-            assert_eq!(depth, depth_2, "(unpack∘pack)(depth) != depth for {depth}");
-        }
-    }
 
     fn chi_squared_test<B: HashBoard + CloneBoard + Position>(size: usize) {
         let testsets = [&*END_EASY, &*MIDDLE_EASY, &*MIDDLE_MEDIUM,

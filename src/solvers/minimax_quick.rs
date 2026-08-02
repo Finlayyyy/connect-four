@@ -26,7 +26,7 @@ impl ABSolver<BitBoard> for MinimaxQuick {
         if pos.is_full() { return ControlFlow::Continue(0); }
 
         (alpha, beta) = cache.get_and_bound(&pos, alpha, beta);
-        if alpha >= beta {return ControlFlow::Continue(beta); }
+        if alpha >= beta { return ControlFlow::Continue(beta); }
 
         let Ok(nexts) = pos.possible_nonlosing_nexts() else {
             return ControlFlow::Continue(pos.will_lose_eval());
