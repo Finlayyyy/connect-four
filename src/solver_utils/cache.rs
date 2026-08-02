@@ -18,23 +18,20 @@ const SMALL_SIZE: usize = 393241;
 /// Any entry with a greater depth will not be inserted
 const MAX_CACHE_DEPTH: usize = position::MAX_MOVES - 5;
 
-const DEPTH_DIFF: u32 = 10;
+const DEPTH_DIFF: u32 = 5;
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct Entry(NonZeroU64);
 
 impl Entry {
-    const TAG_BITS: u64 = 1;
     const KEY_BITS: u64 = 49;
     const EVAL_BITS: u64 = 6;
 
-    const TAG_MASK: u64 = (1 << Self::TAG_BITS) - 1;
     const KEY_MASK: u64 = (1 << Self::KEY_BITS) - 1;
     const EVAL_MASK: u64 = (1 << Self::EVAL_BITS) - 1;
 
-    const KEY_OFFSET: u64 = Self::TAG_BITS;
-    const LOWER_OFFSET: u64 = Self::KEY_BITS + Self::KEY_OFFSET;
+    const LOWER_OFFSET: u64 = Self::KEY_BITS;
     const UPPER_OFFSET: u64 = Self::EVAL_BITS + Self::LOWER_OFFSET;
 
     /// Pack the inputs into a single Entry (u64)
@@ -45,18 +42,16 @@ impl Entry {
         let upper = u64::try_from(upper - position::MIN_EVAL).unwrap();
         debug_assert!(upper & (!Self::EVAL_MASK) == 0);
 
-        let entry = 1
-            | (key << Self::KEY_OFFSET)
+        let entry = key // must be non-zero
             | (lower << Self::LOWER_OFFSET)
             | (upper << Self::UPPER_OFFSET);
         Entry(unsafe { NonZeroU64::new_unchecked(entry) })
     }
 
-
     /// Unpack the Entry and return the orignal elements
     pub fn unpack(&self) -> (u64, isize, isize) {
         let entry = u64::from(self.0);
-        let key = (entry >> Self::KEY_OFFSET) & Self::KEY_MASK;
+        let key = entry & Self::KEY_MASK;
 
         let lower = (entry >> Self::LOWER_OFFSET) & Self::EVAL_MASK;
         let lower = isize::try_from(lower).unwrap() + position::MIN_EVAL;
@@ -159,11 +154,12 @@ impl<B: HashBoard + Position> Cache<B> {
         let entry = Entry::pack(key, lower, upper);
 
         let hash = hash(key, self.size);
-        let Some(old) = &mut self.table[hash] else {
+        if let Some(old) = self.table[hash] {
+            self.table[hash] = Some(old.improve_with(entry));
+        } else {
             self.table[hash] = Some(entry);
-            return;
-        };
-        self.table[hash] = Some(old.improve_with(entry));
+        }
+
     }
 
     /// Given a board with an initial alpha, best eval (updated alpha)

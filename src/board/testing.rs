@@ -157,7 +157,10 @@ pub mod hash_board_tests {
             let board = B::from_moves(moves);
             assert!(board.key() & (!MASK_49) == 0,
                 "`{name}::key` returned a key that used more than 49 bits.");
+            assert!(board.key() != 0,
+                "`{name}::key` returned zero");
         }
+
     }
 
     pub fn key_unique<B: HashBoard>(name: &str) {
