@@ -35,3 +35,4 @@ Play against the current best combination of solver and board (`Deepening<Minima
 
 ## Todo
 - improve cache entry
+- bencher forever
