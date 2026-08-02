@@ -19,7 +19,7 @@ impl MinimaxAlphaBeta {
         boss.check()?;
         if pos.is_full() { return ControlFlow::Continue(0); }
 
-        beta = min(beta, pos.eval());
+        beta = min(beta, pos.will_win_eval());
         if alpha >= beta { return ControlFlow::Continue(beta); };
 
         for (col, next_pos) in pos.nexts(pos.curr()) {
@@ -39,7 +39,7 @@ impl<P: Position + CloneBoard> Solver<P> for MinimaxAlphaBeta {
         boss: &mut M,
         _cache: &mut Cache<P>,
     ) -> ControlFlow<M::Break, isize> {
-        Self::minimax(&pos, boss, pos.will_lose_eval(), pos.eval())
+        Self::minimax(&pos, boss, pos.will_lose_eval(), pos.will_win_eval())
     }
 }
 
