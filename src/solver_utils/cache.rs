@@ -6,8 +6,8 @@ use std::cmp::{min, max};
 use std::num::NonZeroU32;
 
 /// Very large prime number for hash table size
-/// * sizeof::<u64>() = ~400MB
-const LARGE_SIZE: usize = 50331653;
+/// * sizeof::<u64>() = ~200MB
+const LARGE_SIZE: usize = 25165843;
 
 // Relatively small prime number for smaller hash table
 // * sizeof::<u64>() = ~2MB
