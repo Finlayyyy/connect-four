@@ -181,6 +181,7 @@ impl Bencher {
             let (dur_len, dur_sum) = testset
                 .iter()
                 .map_while(|(moves, eval)| {
+                    // cache.clear();
                     bench_func_on::<S, _, _>(&mut boss, &mut cache, moves, *eval)
                 })
                 .fold((0, 0), |(l, s), dur| (l + 1, s + dur));

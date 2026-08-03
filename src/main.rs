@@ -61,7 +61,7 @@ fn play(starting: bool) {
 fn bench_very_easy() {
     println!("BENCH VERY EASY");
     let bencher = bencher!(
-        100 from (END_EASY, MIDDLE_EASY) with Duration::from_secs(15)
+        100 from (END_EASY, MIDDLE_EASY) with Duration::from_secs(1)
     );
     bench!(bencher, WithInfo<ArrayBoard>, MinimaxMut);
     bench!(bencher, BitCols, MinimaxMut);

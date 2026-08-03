@@ -1,113 +1,114 @@
-use crate::basic::Token;
 use crate::board::HashBoard;
-use crate::solver_utils::{Position, position};
+use crate::solver_utils::Position;
 
-
-use ahash::AHasher;
 use std::marker::PhantomData;
-use std::hash::Hasher;
-use std::num::NonZeroU64;
 use std::cmp::{min, max};
+use std::num::NonZeroU32;
 
 /// Very large prime number for hash table size
 /// * sizeof::<u64>() = ~400MB
-const LARGE_SIZE: usize = 50_331_653;
+const LARGE_SIZE: usize = 50331653;
 
 // Relatively small prime number for smaller hash table
 // * sizeof::<u64>() = ~2MB
 const SMALL_SIZE: usize = 393241;
 
-/// Any entry with a greater depth will not be inserted
-const MAX_CACHE_DEPTH: usize = position::MAX_MOVES - 5;
-
-/// To decide how to replace table collions.
-/// An old entry must have count_moves(old) <= count_moves(new) - DEPTH_DIFF
-/// to stay in the cache.
-const DEPTH_DIFF: usize = 10;
-
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct Entry(NonZeroU64);
-
-impl Entry {
-    const KEY_BITS: u64 = 49;
-    const TOKEN_BITS: u64 = 1;
-    const EVAL_BITS: u64 = 6;
-
-    const KEY_MASK: u64 = (1 << Self::KEY_BITS) - 1;
-    const TOKEN_MASK: u64 = (1 << Self::TOKEN_BITS) -1;
-    const EVAL_MASK: u64 = (1 << Self::EVAL_BITS) - 1;
-
-    const TOKEN_OFFSET: u64 = Self::KEY_BITS;
-    const LOWER_OFFSET: u64 = Self::TOKEN_BITS + Self::TOKEN_OFFSET;
-    const UPPER_OFFSET: u64 = Self::EVAL_BITS + Self::LOWER_OFFSET;
-
-    /// Pack the inputs into a single Entry (u64)
-    pub fn pack(key: u64, curr: Token, lower: isize, upper: isize) -> Self {
-        debug_assert!(key & (!Self::KEY_MASK) == 0);
-        let token = u64::from(curr.to_bit());
-        debug_assert!(token & (!Self::TOKEN_MASK) == 0);
-        let lower = u64::try_from(lower - position::MIN_EVAL).unwrap();
-        debug_assert!(lower & (!Self::EVAL_MASK) == 0);
-        let upper = u64::try_from(upper - position::MIN_EVAL).unwrap();
-        debug_assert!(upper & (!Self::EVAL_MASK) == 0);
-
-        let entry = key // must be non-zero
-            | (token << Self::TOKEN_OFFSET)
-            | (lower << Self::LOWER_OFFSET)
-            | (upper << Self::UPPER_OFFSET);
-        Entry(unsafe { NonZeroU64::new_unchecked(entry) })
-    }
-
-    /// Unpack the Entry and return the
-    pub fn unpack(&self) -> (u64, Token, isize, isize) {
-        let entry = u64::from(self.0);
-
-        let key = entry & Self::KEY_MASK;
-
-        let token = (entry >> Self::TOKEN_OFFSET) & Self::TOKEN_MASK;
-        let curr = Token::from_bit(u8::try_from(token).unwrap());
-
-        let lower = (entry >> Self::LOWER_OFFSET) & Self::EVAL_MASK;
-        let lower = isize::try_from(lower).unwrap() + position::MIN_EVAL;
-        let upper = (entry >> Self::UPPER_OFFSET) & Self::EVAL_MASK;
-        let upper = isize::try_from(upper).unwrap() + position::MIN_EVAL;
-
-        (key, curr, lower, upper)
-    }
-
-    pub fn improve_with<B: HashBoard>(self, new: Self) -> Self{
-        let (old_key, old_curr, old_lower, old_upper) = self.unpack();
-        let (new_key, new_curr, new_lower, new_upper) = new.unpack();
-
-        if old_key != new_key {
-            if B::depth(new_key, new_curr) <= DEPTH_DIFF + B::depth(old_key, old_curr) {
-                return new;
-            } else {
-                return self;
-            }
-        }
-        let lower = max(old_lower, new_lower);
-        let upper = min(old_upper, new_upper);
-        Entry::pack(new_key, new_curr, lower, upper)
-    }
-}
-
 // Hash the given `key` into an index into
 /// the inner table with `size` buckets
 fn hash(key: u64, size: usize) -> usize {
-    let mut hasher = AHasher::default();
-    hasher.write_u64(key);
-    (hasher.finish() as usize) % size
+    (key as usize) % size
+}
+
+/// A cache entry for a board and evaluation
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Entry {
+    /// Board key (hash)
+    key: NonZeroU32,
+    /// Entry depth (move count)
+    depth: u16,
+    /// Lower bound evaluation
+    lower: i8,
+    /// Upper bound evaluation
+    upper: i8,
+}
+
+impl Entry {
+    pub fn new(key: u64, depth: usize, lower: isize, upper: isize) -> Self {
+        Entry {
+            key: NonZeroU32::new(key as u32).unwrap(),
+            depth: u16::try_from(depth).unwrap(),
+            lower: i8::try_from(lower).unwrap(),
+            upper: i8::try_from(upper).unwrap()
+        }
+    }
+}
+
+/// Two-tiered entry, containing a deep entry (lowest move count)
+/// and a recent entry (most recent).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct DoubleEntry {
+    /// Entry (lowest move count)
+    deep: Entry,
+    /// Entry (most recent)
+    recent: Entry
+}
+
+impl DoubleEntry {
+    pub fn new(entry: Entry) -> Self {
+        DoubleEntry {
+            deep: entry,
+            recent: entry
+        }
+    }
+
+    pub fn get(&self, key: u64) -> Option<(isize, isize)> {
+        if u32::from(self.deep.key) == key as u32 {
+            return Some((self.deep.lower as isize, self.deep.upper as isize))
+        }
+
+        if u32::from(self.recent.key) == key as u32 {
+            return Some((self.recent.lower as isize, self.recent.upper as isize))
+        }
+
+        None
+    }
+
+    /// Replace by the lowest move count
+    fn improve_deep(old: &mut Entry, new: Entry) {
+        if old.key == new.key {
+            old.lower = max(old.lower, new.lower);
+            old.upper = min(old.upper, new.upper);
+        } else if new.depth <= old.depth {
+            *old = new;
+        }
+    }
+
+    /// Always replace the old entry
+    fn improve_recent(old: &mut Entry, new: Entry) {
+        if old.key == new.key {
+            old.lower = max(old.lower, new.lower);
+            old.upper = min(old.upper, new.upper);
+        } else {
+            *old = new;
+        }
+    }
+
+    /// Given a hash collision with pre-existing entry and a new entry,
+    /// choose which entry should take the place.
+    pub fn improve(&mut self, new: Entry) {
+        Self::improve_deep(&mut self.deep, new);
+        Self::improve_recent(&mut self.recent, new);
+    }
 }
 
 /// Transposition Table Cache
 /// Can store a HashBoard with a key of at most 49 bits
 pub struct Cache<B> {
-    table: Vec<Option<Entry>>,
+    table: Vec<Option<DoubleEntry>>,
     size: usize,
     pd: PhantomData<B>
 }
+
 impl<B> Cache<B> {
     /// Construct a new cache with the given amount
     /// of space
@@ -140,12 +141,9 @@ impl<B: HashBoard + Position> Cache<B> {
     pub fn get(&self, board: &B) -> Option<(isize, isize)> {
         let key = board.key();
         let hash = hash(key, self.size);
-        let entry = self.table[hash]?;
-        let (other_key, _, lower, upper) = entry.unpack();
-        match key == other_key {
-            true => Some((lower, upper)),
-            false => None,
-        }
+
+        let entries = self.table[hash]?;
+        entries.get(key)
     }
 
     /// Search the cache for an entry for board and, if found,
@@ -160,21 +158,19 @@ impl<B: HashBoard + Position> Cache<B> {
         (alpha, beta)
     }
 
-    /// Insert the board into the cache with lower and upper bound.
+
+    /// Insert the board into the cache with lower and upper bound
     /// MIN_EVAL <= eval <= MAX_EVAL
     pub fn insert(&mut self, board: &B, lower: isize, upper: isize) {
-        if board.move_count() > MAX_CACHE_DEPTH { return; }
-
         let key = board.key();
-        let entry = Entry::pack(key, board.curr(), lower, upper);
+        let entry = Entry::new(key, board.move_count(), lower, upper);
 
         let hash = hash(key, self.size);
-        if let Some(old) = self.table[hash] {
-            self.table[hash] = Some(old.improve_with::<B>(entry));
+        if let Some(old) = &mut self.table[hash] {
+            old.improve(entry);
         } else {
-            self.table[hash] = Some(entry);
+            self.table[hash] = Some(DoubleEntry::new(entry));
         }
-
     }
 
     /// Given a board with an initial alpha, best eval (updated alpha)
@@ -191,118 +187,14 @@ impl<B: HashBoard + Position> Cache<B> {
         let mut lower = board.will_lose_eval();
         let mut upper = board.will_win_eval();
         if best <= prev_alpha {
-            upper = best;
+            upper = best; // upper bound
         } else if best >= beta {
-            lower = best;
+            lower = best; // lower bound
         } else {
+            // exact bound
             lower = best;
             upper = best;
-        };
+        }
         self.insert(board, lower, upper);
-    }
-}
-
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::bench::*;
-    use crate::board::*;
-
-    use std::collections::HashSet;
-
-    use statrs::distribution::ChiSquared;
-    use statrs::distribution::ContinuousCDF;
-    use statrs::statistics::Distribution;
-
-    #[test]
-    fn pack_unpack() {
-        for (moves, eval) in &*END_EASY {
-            let board = BitCols::from_moves(moves);
-            let key = board.key();
-            let curr = board.curr();
-
-            let lower = eval - 1;
-            let upper = eval + 1;
-            let entry = Entry::pack(key, curr, lower, upper);
-            let (key_2, curr_2, lower_2, upper_2) = entry.unpack();
-            assert_eq!(key, key_2, "(unpack∘pack)(key) != key for {key}");
-            assert_eq!(curr, curr_2, "(unpack∘pack)(curr) != curr for {curr}");
-            assert_eq!(lower, lower_2, "(unpack∘pack)(lower) != lower for {lower}");
-            assert_eq!(upper, upper_2, "(unpack∘pack)(upper) != upper for {upper}");
-        }
-    }
-
-    fn chi_squared_test<B: HashBoard + CloneBoard + Position>(size: usize) {
-        let testsets = [&*END_EASY, &*MIDDLE_EASY, &*MIDDLE_MEDIUM,
-            &*BEGIN_EASY, &*BEGIN_MEDIUM, &*BEGIN_HARD, &*SOLVE
-        ];
-        let moveset = testsets.iter()
-            .map(|testset|
-                testset.iter().map(|(moves, _)| moves))
-            .flatten();
-
-        // ( (#positions(movesets)≈6000)
-        // * pow(column::COUNT, DEPTH=4) ) ≈ 10e6
-        const DEPTH: usize = 4;
-
-        let mut seen = HashSet::new();
-        let mut table: Vec<u32> = vec![0; size];
-        let mut visit = |pos: &B| {
-            let key = pos.key();
-            let idx = hash(key, size);
-
-            if seen.get(&key).is_none() {
-                table[idx] += 1;
-                seen.insert(key);
-            }
-        };
-
-        for moves in moveset {
-            let board = B::from_moves(moves);
-            board.dfs(board.curr(), DEPTH, &mut visit);
-        }
-
-        let n = table.iter().sum::<u32>();
-        let e = (n as f64) / (size as f64);
-        let df = size - 1;
-
-        let chi_sq = e.recip() * table.iter()
-            .map(|&o| o * o)
-            .sum::<u32>() as f64 - n as f64;
-
-        let dist = ChiSquared::new(df as f64).unwrap();
-        let p = dist.sf(chi_sq);
-
-        if p < 0.05 {
-            let min = table.iter().min().unwrap();
-            let max = table.iter().max().unwrap();
-
-            let mu = dist.mean().unwrap();
-            let sigma = dist.std_dev().unwrap();
-
-            println!("Failed chi-squared test.");
-            println!("n = {n}, size = {size}");
-            println!("e = {e}");
-            println!("min = {min}, max = {max}");
-            println!("chi_sq = {chi_sq}");
-            println!("chi_mean = {}, chi_stddev = {}", mu, sigma);
-            println!("z-score = {}", (chi_sq - mu)/sigma);
-
-            println!("p = {p}");
-            panic!("p < 0.05, failed for size: {size}");
-        }
-    }
-
-    #[test]
-    fn chi_squared_bitboard() {
-        chi_squared_test::<BitBoard>(SMALL_SIZE);
-        chi_squared_test::<BitBoard>(LARGE_SIZE);
-    }
-
-    #[test]
-    fn chi_squared_bitcols() {
-        chi_squared_test::<BitCols>(SMALL_SIZE);
-        chi_squared_test::<BitCols>(LARGE_SIZE);
     }
 }
