@@ -1,8 +1,9 @@
 use crate::board::HashBoard;
-use crate::solver_utils::{Position, position};
+use crate::solver_utils::Position;
 
 use std::marker::PhantomData;
 use std::cmp::{min, max};
+use std::num::NonZeroU32;
 
 /// Very large prime number for hash table size
 /// * sizeof::<u64>() = ~400MB
@@ -11,13 +12,6 @@ const LARGE_SIZE: usize = 50331653;
 // Relatively small prime number for smaller hash table
 // * sizeof::<u64>() = ~2MB
 const SMALL_SIZE: usize = 393241;
-
-/// Any entry with a greater depth will not be inserted
-const MAX_CACHE_DEPTH: usize = position::MAX_MOVES - 5;
-
-/// An older entry must have a depth (move count)
-/// `old <= new - DEPTH_DIFF` to avoid being replaced.
-const DEPTH_DIFF: u16 = 10;
 
 // Hash the given `key` into an index into
 /// the inner table with `size` buckets
@@ -28,69 +22,85 @@ fn hash(key: u64, size: usize) -> usize {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct Entry {
     /// Board key (hash)
-    pub key: u32,
+    key: NonZeroU32,
     /// Entry depth (move count)
-    pub depth: u16,
+    depth: u16,
     /// Lower bound evaluation
-    pub lower: i8,
+    lower: i8,
     /// Upper bound evaluation
-    pub upper: i8,
+    upper: i8,
 }
 
 impl Entry {
     pub fn new(key: u64, depth: usize, lower: isize, upper: isize) -> Self {
         Entry {
-            key: key as u32,
+            key: NonZeroU32::new(key as u32).unwrap(),
             depth: u16::try_from(depth).unwrap(),
             lower: i8::try_from(lower).unwrap(),
             upper: i8::try_from(upper).unwrap()
         }
     }
-    /// An empty entry
-    pub const fn empty() -> Self {
-        Entry { key: 0, depth: 0, lower: i8::MIN, upper: i8::MAX }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct DoubleEntry {
+    deep: Entry,
+    recent: Entry
+}
+
+impl DoubleEntry {
+    pub fn new(entry: Entry) -> Self {
+        DoubleEntry {
+            deep: entry,
+            recent: entry
+        }
     }
-    /// Is the entry empty
-    pub const fn is_empty(&self) -> bool {
-        self.lower == i8::MIN && self.upper == i8::MAX
+
+    pub fn get(&self, key: u64) -> Option<(isize, isize)> {
+        if u32::from(self.deep.key) == key as u32 {
+            return Some((self.deep.lower as isize, self.deep.upper as isize))
+        }
+
+        if u32::from(self.recent.key) as u32 == key as u32 {
+            return Some((self.recent.lower as isize, self.recent.upper as isize))
+        }
+
+        None
     }
-    /// Returns `None` if the entry is empty, otherwise
-    /// `Some(self)`.
-    pub const fn nonempty(self) -> Option<Self> {
-        if self.is_empty() {
-            None
+
+    /// Replace the old entry with one that with
+    /// the lowest move count
+    fn improve_deep(old: &mut Entry, new: Entry) {
+        if old.key == new.key {
+            old.lower = max(old.lower, new.lower);
+            old.upper = min(old.upper, new.upper);
+        } else if new.depth <= old.depth {
+            *old = new;
+        }
+    }
+
+    /// Always replace the old entry
+    fn improve_recent(old: &mut Entry, new: Entry) {
+        if old.key == new.key {
+            old.lower = max(old.lower, new.lower);
+            old.upper = min(old.upper, new.upper);
         } else {
-            Some(self)
+            *old = new;
         }
     }
 
     /// Given a hash collision with pre-existing entry and a new entry,
     /// choose which entry should take the place.
-    pub fn consider_replace(&mut self, new: Self) {
-        debug_assert!(!new.is_empty());
-        if self.is_empty() {
-            *self = new;
-            return;
-        }
-
-        // Determine which key (board) is more valuable to
-        // have in the cache.
-        if self.key != new.key {
-            if new.depth <= DEPTH_DIFF + self.depth {
-                *self = new;
-            }
-        } else {
-            debug_assert!(self.lower <= new.lower || self.upper >= new.upper);
-            self.lower = max(self.lower, new.lower);
-            self.upper = min(self.upper, new.upper);
-        }
+    pub fn improve(&mut self, new: Entry) {
+        Self::improve_deep(&mut self.deep, new);
+        Self::improve_recent(&mut self.recent, new);
     }
 }
 
 /// Transposition Table Cache
 /// Can store a HashBoard with a key of at most 49 bits
 pub struct Cache<B> {
-    table: Vec<Entry>,
+    table: Vec<Option<DoubleEntry>>,
     size: usize,
     pd: PhantomData<B>
 }
@@ -100,7 +110,7 @@ impl<B> Cache<B> {
     /// of space
     pub fn new(size: usize) -> Self {
         Cache {
-            table: vec![Entry::empty(); size],
+            table: vec![None; size],
             size,
             pd: PhantomData
         }
@@ -116,7 +126,7 @@ impl<B> Cache<B> {
 
     /// Clear the table by filling it with EMPTY entries
     pub fn clear(&mut self) {
-        self.table.fill(Entry::empty());
+        self.table.fill(None);
     }
 }
 
@@ -128,11 +138,8 @@ impl<B: HashBoard + Position> Cache<B> {
         let key = board.key();
         let hash = hash(key, self.size);
 
-        let entry = self.table[hash].nonempty()?;
-        match key as u32 == entry.key {
-            true => Some((entry.lower as isize, entry.upper as isize)),
-            false => None,
-        }
+        let entries = self.table[hash]?;
+        entries.get(key)
     }
 
     /// Search the cache for an entry for board and, if found,
@@ -151,13 +158,15 @@ impl<B: HashBoard + Position> Cache<B> {
     /// Insert the board into the cache with lower and upper bound
     /// MIN_EVAL <= eval <= MAX_EVAL
     pub fn insert(&mut self, board: &B, lower: isize, upper: isize) {
-        if board.move_count() > MAX_CACHE_DEPTH { return; }
-
         let key = board.key();
         let entry = Entry::new(key, board.move_count(), lower, upper);
 
         let hash = hash(key, self.size);
-        self.table[hash].consider_replace(entry);
+        if let Some(old) = &mut self.table[hash] {
+            old.improve(entry);
+        } else {
+            self.table[hash] = Some(DoubleEntry::new(entry));
+        }
     }
 
     /// Given a board with an initial alpha, best eval (updated alpha)
