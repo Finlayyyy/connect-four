@@ -1,24 +1,5 @@
 use crate::basic::*;
 
-/// Convert a token to a single bit
-#[inline(always)]
-fn token_to_u8(token: Token) -> u8 {
-    match token {
-        Token::A => 0,
-        Token::B => 1,
-    }
-}
-
-/// Convert a single bit into a token
-#[inline(always)]
-fn u8_to_token(bit: u8) -> Token {
-    match bit {
-        0 => Token::A,
-        1 => Token::B,
-        a => panic!("Expected either 0 or 1 to convert into token, found {a}")
-    }
-}
-
 /// A column of the BitBoard, stored as a u8.
 /// Formatted with a leading 1 bit, followed by the rows from bottom to top,
 /// The top tile is the LSB and the bottom tile is the MSB after the leading 1.
@@ -57,7 +38,7 @@ impl BitCol {
         if self.count() > usize::from(row) {
             // The bit index of the desired row
             let bit_idx = self.count() - usize::from(row) - 1;
-            Some(u8_to_token((self.0 >> bit_idx) & 1))
+            Some(Token::from_bit((self.0 >> bit_idx) & 1))
         } else {
             None // The cell is empty
         }
@@ -77,17 +58,15 @@ impl BitCol {
     pub fn force_push(&mut self, token: Token) {
         debug_assert!(!self.is_full(), "Tried to push onto a full column.");
 
-        let token_bit = token_to_u8(token);
         self.0 <<= 1;
-        self.0 |= token_bit;
+        self.0 |= token.to_bit();
     }
 
     /// Returns a new column with the pushed token,
     /// or `None` if the column was full
     #[inline(always)]
     pub fn pushed(self, token: Token) -> Option<BitCol> {
-        let token_bit = token_to_u8(token);
-        let pushed = (self.0 << 1) | token_bit;
+        let pushed = (self.0 << 1) | token.to_bit();
 
         // check whether pushed is still valid
         if pushed & 0b1000_0000 != 0 {

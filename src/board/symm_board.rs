@@ -60,6 +60,10 @@ impl HashBoard for SymmBoard {
 
         left | (centre << (3 * 7)) | (right << (4 * 7))
     }
+
+    fn depth(key: u64, curr: Token) -> usize {
+        BitCols::depth(key, curr)
+    }
 }
 
 impl Position for SymmBoard {

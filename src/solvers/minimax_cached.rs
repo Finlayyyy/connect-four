@@ -17,8 +17,8 @@ impl MinimaxCached {
         boss.check()?;
         if pos.is_full() { return ControlFlow::Continue(0); }
 
-        if let Some((BoundType::Exact, eval)) = cache.get(&pos) {
-            return ControlFlow::Continue(eval);
+        if let Some((lower, _upper)) = cache.get(&pos) {
+            return ControlFlow::Continue(lower);
         }
 
         let mut best = isize::MIN;
@@ -31,7 +31,7 @@ impl MinimaxCached {
             let eval = -Self::minimax(next_pos, boss, cache)?;
             best = max(best, eval);
         }
-        cache.insert(BoundType::Exact, &pos, best);
+        cache.insert(&pos, best, best);
         ControlFlow::Continue(best)
     }
 }

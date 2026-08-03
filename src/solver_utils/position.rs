@@ -4,9 +4,9 @@ use crate::board::*;
 /// Maximum possible number of moves in a game
 pub const MAX_MOVES: usize = Cell::COUNT;
 /// Minimum possible position eval score
-pub const MIN_EVAL: isize = -(MAX_MOVES as isize) / 2 + 3;
+pub const MIN_EVAL: isize = -((MAX_MOVES as isize) / 2);
 /// Maximum possible position eval score
-pub const MAX_EVAL: isize = (MAX_MOVES as isize + 1) / 2 - 3;
+pub const MAX_EVAL: isize = (MAX_MOVES as isize + 1) / 2;
 
 pub trait Position: Board {
     /// Number of moves made in the game
@@ -112,6 +112,10 @@ impl<B: MutBoard> MutBoard for WithInfo<B> {
 impl<B: HashBoard> HashBoard for WithInfo<B> {
     fn key(&self) -> u64 {
         self.board.key()
+    }
+
+    fn depth(key: u64, curr: Token) -> usize {
+        B::depth(key, curr)
     }
 }
 

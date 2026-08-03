@@ -231,7 +231,7 @@ impl BitBoard {
     /// Returns an asymmetric key for the board state
     #[inline(always)]
     fn asymm_key(&self) -> u64 {
-        self.board + self.mask + BOTTOM_MASK
+        self.board | (self.mask + BOTTOM_MASK)
     }
 }
 
@@ -350,6 +350,13 @@ impl HashBoard for BitBoard {
         };
         let right = right << (4 * WIDTH);
         left | centre | right
+    }
+
+    #[inline(always)]
+    fn depth(key: u64, curr: Token) -> usize {
+        // The number of `curr` tokens on the board
+        let c = key.count_ones() as usize - column::COUNT;
+        2 * c + (curr.to_bit() as usize)
     }
 }
 

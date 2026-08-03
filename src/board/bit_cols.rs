@@ -81,6 +81,12 @@ impl HashBoard for BitCols {
         }
         k
     }
+
+    fn depth(key: u64, curr: Token) -> usize {
+        // The number of `curr` tokens on the board
+        let c = key.count_ones() as usize - column::COUNT;
+        2 * c + (curr.to_bit() as usize)
+    }
 }
 
 impl Position for BitCols {
