@@ -288,7 +288,7 @@ pub trait MutBoard: Board {
     fn unplace(&mut self, col: column::Idx);
 }
 
-/// Trait for board implementations that have a cheap hash function `key`,
+/// Trait for board implementations that have a cheap non-zero hash function `key`,
 /// used for caching board states in the solver. Must only take up
 /// `column::COUNT * column::COUNT = 49` bits.
 pub trait HashBoard: Board {

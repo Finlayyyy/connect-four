@@ -29,6 +29,8 @@ Solve: `cargo run -r bench solve`
 todo!
 
 ## Todo
-- Don't cache bounds equal to pos.will_lose_score() or pos.will_win_score() (?)
-- How to use age in Entry
-- Is .count_ones() slow?
+- bencher forever
+
+## Compare to
+[Pascal Pons' Solver](https://github.com/PascalPons/connect4)
+[Ben Rall's Solver](https://github.com/benjaminrall/connect-four-ai/tree/main)

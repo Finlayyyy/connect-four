@@ -24,7 +24,7 @@ impl MinimaxSymm {
         if pos.is_full() { return ControlFlow::Continue(0); }
         let prev_alpha = alpha;
 
-        beta = min(beta, pos.eval());
+        beta = min(beta, pos.will_win_eval());
         (alpha, beta) = cache.get_and_bound(&pos, alpha, beta);
         if alpha >= beta { return ControlFlow::Continue(beta); }
 
@@ -54,7 +54,7 @@ impl<P: Position + CloneBoard + HashBoard> Solver<P> for MinimaxSymm {
         cache: &mut Cache<P>,
     ) -> ControlFlow<M::Break, isize> {
         let alpha = pos.will_lose_eval();
-        let beta = pos.eval();
+        let beta = pos.will_win_eval();
         match SymmDiff::new(&pos) {
             None => MinimaxABCached::solve(pos, boss, cache),
             Some(diffs) => Self::minimax(pos, boss, cache, alpha, beta, diffs),

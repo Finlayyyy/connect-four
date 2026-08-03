@@ -19,6 +19,7 @@ fn hash(key: u64, size: usize) -> usize {
     (key as usize) % size
 }
 
+/// A cache entry for a board and evaluation
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct Entry {
     /// Board key (hash)
@@ -34,7 +35,7 @@ struct Entry {
 impl Entry {
     pub fn new(key: u64, depth: usize, lower: isize, upper: isize) -> Self {
         Entry {
-            key: NonZeroU32::new(key as u32).unwrap(),
+            key: unsafe { NonZeroU32::new_unchecked(key as u32) },
             depth: u16::try_from(depth).unwrap(),
             lower: i8::try_from(lower).unwrap(),
             upper: i8::try_from(upper).unwrap()
@@ -42,9 +43,13 @@ impl Entry {
     }
 }
 
+/// Two-tiered entry, containing a deep entry (lowest move count)
+/// and a recent entry (most recent).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct DoubleEntry {
+    /// Entry (lowest move count)
     deep: Entry,
+    /// Entry (most recent)
     recent: Entry
 }
 
@@ -61,15 +66,14 @@ impl DoubleEntry {
             return Some((self.deep.lower as isize, self.deep.upper as isize))
         }
 
-        if u32::from(self.recent.key) as u32 == key as u32 {
+        if u32::from(self.recent.key) == key as u32 {
             return Some((self.recent.lower as isize, self.recent.upper as isize))
         }
 
         None
     }
 
-    /// Replace the old entry with one that with
-    /// the lowest move count
+    /// Replace by the lowest move count
     fn improve_deep(old: &mut Entry, new: Entry) {
         if old.key == new.key {
             old.lower = max(old.lower, new.lower);
@@ -180,13 +184,14 @@ impl<B: HashBoard + Position> Cache<B> {
         best: isize,
         beta: isize,
     ) {
-        let mut lower = i8::MIN as isize;
-        let mut upper = i8::MAX as isize;
+        let mut lower = board.will_lose_eval();
+        let mut upper = board.will_win_eval();
         if best <= prev_alpha {
-            upper = best;
+            upper = best; // upper bound
         } else if best >= beta {
-            lower = best;
+            lower = best; // lower bound
         } else {
+            // exact bound
             lower = best;
             upper = best;
         }

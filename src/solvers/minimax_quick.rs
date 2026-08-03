@@ -42,7 +42,7 @@ impl ABSolver<BitBoard> for MinimaxQuick {
 
         let prev_alpha = alpha;
         alpha = max(alpha, pos.will_lose_eval() + 1);
-        beta = min(beta, pos.eval() - 1);
+        beta = min(beta, pos.will_win_eval() - 1);
         if alpha >= beta {return ControlFlow::Continue(beta); }
 
         for col in moves {
@@ -60,7 +60,7 @@ impl ABSolver<BitBoard> for MinimaxQuick {
 impl Solver<BitBoard> for MinimaxQuick {
     fn solve<M: SolverManager>(pos: BitBoard, boss: &mut M, cache: &mut Cache<BitBoard>) -> ControlFlow<M::Break, isize> {
         let min = pos.will_lose_eval();
-        let max = pos.eval();
+        let max = pos.will_win_eval();
         Self::minimax(pos, boss, cache, min, max)
     }
 }
