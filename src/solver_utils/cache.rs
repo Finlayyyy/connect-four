@@ -35,7 +35,7 @@ struct Entry {
 impl Entry {
     pub fn new(key: u64, depth: usize, lower: isize, upper: isize) -> Self {
         Entry {
-            key: unsafe { NonZeroU32::new_unchecked(key as u32) },
+            key: NonZeroU32::new(key as u32).unwrap(),
             depth: u16::try_from(depth).unwrap(),
             lower: i8::try_from(lower).unwrap(),
             upper: i8::try_from(upper).unwrap()
