@@ -34,7 +34,7 @@ Play against the current best combination of solver and board (`Deepening<Minima
 
 
 ## Todo
-- bencher forever
+- allow passing forever into bencher
 
 ## Compare to
 [Pascal Pons' Solver](https://github.com/PascalPons/connect4)
