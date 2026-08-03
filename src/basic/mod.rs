@@ -39,6 +39,24 @@ impl Token {
     pub const fn opp(&self) -> Token {
         self.next()
     }
+
+    /// Convert the token into a single bit
+    #[inline(always)]
+    pub const fn to_bit(self) -> u8 {
+        match self {
+            Token::A => 0,
+            Token::B => 1,
+        }
+    }
+
+    #[inline(always)]
+    pub const fn from_bit(bit: u8) -> Self {
+        match bit {
+            0 => Token::A,
+            1 => Token::B,
+            _ => panic!("Expected single bit to convert Token")
+        }
+    }
 }
 
 impl Not for Token {

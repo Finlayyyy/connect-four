@@ -82,7 +82,7 @@ impl<P: Position + CloneBoard + HashBoard> ABSolver<P> for MinimaxAvoidant {
         for cell in pos.next_cells() {
             match MoveResult::new_at(&pos, cell) {
                 // curr has at least one immediately winning move
-                MoveResult::CurrWin => return ControlFlow::Continue(pos.eval()),
+                MoveResult::CurrWin => return ControlFlow::Continue(pos.will_win_eval()),
                 // opponent has at least one winning move next turn
                 MoveResult::BlockOppWin if must_play.is_none() => must_play = Some(cell.col),
                 // opponent has at least two winning moves next turn, thus curr has lost.
@@ -105,7 +105,7 @@ impl<P: Position + CloneBoard + HashBoard> ABSolver<P> for MinimaxAvoidant {
         }
 
         alpha = max(alpha, pos.will_lose_eval() + 1);
-        beta = min(beta, pos.eval() - 1);
+        beta = min(beta, pos.will_win_eval() - 1);
         if alpha >= beta { return ControlFlow::Continue(beta); }
 
         for col in moves {
@@ -122,7 +122,7 @@ impl<P: Position + CloneBoard + HashBoard> ABSolver<P> for MinimaxAvoidant {
 impl<P: Position + CloneBoard + HashBoard> Solver<P> for MinimaxAvoidant {
     fn solve<M: SolverManager>(pos: P, boss: &mut M, cache: &mut Cache<P>) -> ControlFlow<M::Break, isize> {
         let min = pos.will_lose_eval();
-        let max = pos.eval();
+        let max = pos.will_win_eval();
         Self::minimax(pos, boss, cache, min, max)
     }
 }

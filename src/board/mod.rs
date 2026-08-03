@@ -294,4 +294,7 @@ pub trait MutBoard: Board {
 pub trait HashBoard: Board {
     /// Returns a 49-bit hash key for the board state.
     fn key(&self) -> u64;
+
+    /// Count the number of moves from the key
+    fn depth(key: u64, curr: Token) -> usize;
 }

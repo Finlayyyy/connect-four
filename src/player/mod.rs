@@ -99,7 +99,7 @@ impl<P: Position + CloneBoard, S: Solver<P>> Player<P> for Minimax<P, S> {
         println!(
             "{} <= eval <= {}",
             pos.will_lose_eval(),
-            pos.eval()
+            pos.will_win_eval()
         );
         print!("col :   1   2   3   4   5   6   7");
 

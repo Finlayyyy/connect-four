@@ -22,12 +22,12 @@ where
         cache: &mut Cache<P>,
     ) -> ControlFlow<M::Break, isize> {
         if pos.can_win(pos.curr()) {
-            return ControlFlow::Continue(pos.eval());
+            return ControlFlow::Continue(pos.will_win_eval());
         }
 
         boss.check()?;
         let mut min = pos.will_lose_eval();
-        let mut max = pos.eval() - 1;
+        let mut max = pos.will_win_eval() - 1;
 
         while min < max {
             let mut mid = min + (max - min) / 2;

@@ -42,7 +42,7 @@ impl<P: Position + CloneBoard + HashBoard> ABSolver<P> for MinimaxOrdered {
         }
 
         alpha = max(alpha, pos.will_lose_eval());
-        beta = min(beta, pos.eval() - 1);
+        beta = min(beta, pos.will_win_eval() - 1);
         if alpha >= beta { return ControlFlow::Continue(beta); }
 
         for (_col, next_pos) in moves {
@@ -59,7 +59,7 @@ impl<P: Position + CloneBoard + HashBoard> ABSolver<P> for MinimaxOrdered {
 impl<P: Position + CloneBoard + HashBoard> Solver<P> for MinimaxOrdered {
     fn solve<M: SolverManager>(pos: P, boss: &mut M, cache: &mut Cache<P>) -> ControlFlow<M::Break, isize> {
         let min = pos.will_lose_eval();
-        let max = pos.eval();
+        let max = pos.will_win_eval();
         Self::minimax(pos, boss, cache, min, max)
     }
 

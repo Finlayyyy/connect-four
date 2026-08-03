@@ -1,5 +1,7 @@
+use crate::basic::Token;
 use crate::board::HashBoard;
 use crate::solver_utils::{Position, position};
+
 
 use ahash::AHasher;
 use std::marker::PhantomData;
@@ -18,7 +20,10 @@ const SMALL_SIZE: usize = 393241;
 /// Any entry with a greater depth will not be inserted
 const MAX_CACHE_DEPTH: usize = position::MAX_MOVES - 5;
 
-const DEPTH_DIFF: u32 = 5;
+/// To decide how to replace table collions.
+/// An old entry must have count_moves(old) <= count_moves(new) - DEPTH_DIFF
+/// to stay in the cache.
+const DEPTH_DIFF: usize = 10;
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -26,47 +31,57 @@ struct Entry(NonZeroU64);
 
 impl Entry {
     const KEY_BITS: u64 = 49;
+    const TOKEN_BITS: u64 = 1;
     const EVAL_BITS: u64 = 6;
 
     const KEY_MASK: u64 = (1 << Self::KEY_BITS) - 1;
+    const TOKEN_MASK: u64 = (1 << Self::TOKEN_BITS) -1;
     const EVAL_MASK: u64 = (1 << Self::EVAL_BITS) - 1;
 
-    const LOWER_OFFSET: u64 = Self::KEY_BITS;
+    const TOKEN_OFFSET: u64 = Self::KEY_BITS;
+    const LOWER_OFFSET: u64 = Self::TOKEN_BITS + Self::TOKEN_OFFSET;
     const UPPER_OFFSET: u64 = Self::EVAL_BITS + Self::LOWER_OFFSET;
 
     /// Pack the inputs into a single Entry (u64)
-    pub fn pack(key: u64, lower: isize, upper: isize) -> Self {
+    pub fn pack(key: u64, curr: Token, lower: isize, upper: isize) -> Self {
         debug_assert!(key & (!Self::KEY_MASK) == 0);
+        let token = u64::from(curr.to_bit());
+        debug_assert!(token & (!Self::TOKEN_MASK) == 0);
         let lower = u64::try_from(lower - position::MIN_EVAL).unwrap();
         debug_assert!(lower & (!Self::EVAL_MASK) == 0);
         let upper = u64::try_from(upper - position::MIN_EVAL).unwrap();
         debug_assert!(upper & (!Self::EVAL_MASK) == 0);
 
         let entry = key // must be non-zero
+            | (token << Self::TOKEN_OFFSET)
             | (lower << Self::LOWER_OFFSET)
             | (upper << Self::UPPER_OFFSET);
         Entry(unsafe { NonZeroU64::new_unchecked(entry) })
     }
 
-    /// Unpack the Entry and return the orignal elements
-    pub fn unpack(&self) -> (u64, isize, isize) {
+    /// Unpack the Entry and return the
+    pub fn unpack(&self) -> (u64, Token, isize, isize) {
         let entry = u64::from(self.0);
+
         let key = entry & Self::KEY_MASK;
+
+        let token = (entry >> Self::TOKEN_OFFSET) & Self::TOKEN_MASK;
+        let curr = Token::from_bit(u8::try_from(token).unwrap());
 
         let lower = (entry >> Self::LOWER_OFFSET) & Self::EVAL_MASK;
         let lower = isize::try_from(lower).unwrap() + position::MIN_EVAL;
         let upper = (entry >> Self::UPPER_OFFSET) & Self::EVAL_MASK;
         let upper = isize::try_from(upper).unwrap() + position::MIN_EVAL;
 
-        (key, lower, upper)
+        (key, curr, lower, upper)
     }
 
-    pub fn improve_with(self, new: Self) -> Self{
-        let (old_key, old_lower, old_upper) = self.unpack();
-        let (new_key, new_lower, new_upper) = new.unpack();
+    pub fn improve_with<B: HashBoard>(self, new: Self) -> Self{
+        let (old_key, old_curr, old_lower, old_upper) = self.unpack();
+        let (new_key, new_curr, new_lower, new_upper) = new.unpack();
 
         if old_key != new_key {
-            if new_key.count_ones() <= DEPTH_DIFF + old_key.count_ones() {
+            if B::depth(new_key, new_curr) <= DEPTH_DIFF + B::depth(old_key, old_curr) {
                 return new;
             } else {
                 return self;
@@ -74,7 +89,7 @@ impl Entry {
         }
         let lower = max(old_lower, new_lower);
         let upper = min(old_upper, new_upper);
-        Entry::pack(new_key, lower, upper)
+        Entry::pack(new_key, new_curr, lower, upper)
     }
 }
 
@@ -126,7 +141,7 @@ impl<B: HashBoard + Position> Cache<B> {
         let key = board.key();
         let hash = hash(key, self.size);
         let entry = self.table[hash]?;
-        let (other_key, lower, upper) = entry.unpack();
+        let (other_key, _, lower, upper) = entry.unpack();
         match key == other_key {
             true => Some((lower, upper)),
             false => None,
@@ -151,11 +166,11 @@ impl<B: HashBoard + Position> Cache<B> {
         if board.move_count() > MAX_CACHE_DEPTH { return; }
 
         let key = board.key();
-        let entry = Entry::pack(key, lower, upper);
+        let entry = Entry::pack(key, board.curr(), lower, upper);
 
         let hash = hash(key, self.size);
         if let Some(old) = self.table[hash] {
-            self.table[hash] = Some(old.improve_with(entry));
+            self.table[hash] = Some(old.improve_with::<B>(entry));
         } else {
             self.table[hash] = Some(entry);
         }
@@ -173,8 +188,8 @@ impl<B: HashBoard + Position> Cache<B> {
         best: isize,
         beta: isize,
     ) {
-        let mut lower = position::MIN_EVAL;
-        let mut upper = position::MAX_EVAL;
+        let mut lower = board.will_lose_eval();
+        let mut upper = board.will_win_eval();
         if best <= prev_alpha {
             upper = best;
         } else if best >= beta {
@@ -205,11 +220,14 @@ mod tests {
         for (moves, eval) in &*END_EASY {
             let board = BitCols::from_moves(moves);
             let key = board.key();
+            let curr = board.curr();
+
             let lower = eval - 1;
             let upper = eval + 1;
-            let entry = Entry::pack(key, lower, upper);
-            let (key_2, lower_2, upper_2) = entry.unpack();
+            let entry = Entry::pack(key, curr, lower, upper);
+            let (key_2, curr_2, lower_2, upper_2) = entry.unpack();
             assert_eq!(key, key_2, "(unpack∘pack)(key) != key for {key}");
+            assert_eq!(curr, curr_2, "(unpack∘pack)(curr) != curr for {curr}");
             assert_eq!(lower, lower_2, "(unpack∘pack)(lower) != lower for {lower}");
             assert_eq!(upper, upper_2, "(unpack∘pack)(upper) != upper for {upper}");
         }

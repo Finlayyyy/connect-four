@@ -29,6 +29,7 @@ macro_rules! make_hash_board_tests {
     ($b:ty) => {
         make_test!($b, hash_board_tests, key_49_bits);
         make_test!($b, hash_board_tests, key_unique);
+        make_test!($b, hash_board_tests, depth_correct);
     }
 }
 
@@ -160,7 +161,16 @@ pub mod hash_board_tests {
             assert!(board.key() != 0,
                 "`{name}::key` returned zero");
         }
+    }
 
+    pub fn depth_correct<B: HashBoard>(name: &str) {
+        for (moves, _) in END_EASY.iter().chain(BEGIN_EASY.iter()) {
+            let board = B::from_moves(moves);
+            let curr = board.calc_curr();
+            let mc = board.count_moves();
+            assert_eq!(mc, B::depth(board.key(), curr),
+                "`{name}::depth` returned an incorrect move count.");
+        }
     }
 
     pub fn key_unique<B: HashBoard>(name: &str) {

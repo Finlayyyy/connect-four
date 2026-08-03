@@ -22,7 +22,7 @@ impl<P: Position + CloneBoard + HashBoard> ABSolver<P> for MinimaxABCached  {
         if pos.is_full() { return ControlFlow::Continue(0); }
 
         let prev_alpha = alpha;
-        beta = min(beta, pos.eval());
+        beta = min(beta, pos.will_win_eval());
         (alpha, beta) = cache.get_and_bound(&pos, alpha, beta);
         if alpha >= beta { return ControlFlow::Continue(beta); }
 
@@ -45,7 +45,7 @@ impl<P: Position + CloneBoard + HashBoard> ABSolver<P> for MinimaxABCached  {
 impl<P: Position + CloneBoard + HashBoard> Solver<P> for MinimaxABCached {
     fn solve<M: SolverManager>(pos: P, boss: &mut M, cache: &mut Cache<P>) -> ControlFlow<M::Break, isize> {
         let min = pos.will_lose_eval();
-        let max = pos.eval();
+        let max = pos.will_win_eval();
         Self::minimax(pos, boss, cache, min, max)
     }
 }
