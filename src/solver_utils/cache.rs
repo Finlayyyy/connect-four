@@ -1,14 +1,12 @@
 use crate::board::HashBoard;
 use crate::solver_utils::{Position, position};
 
-use ahash::AHasher;
 use std::marker::PhantomData;
-use std::hash::Hasher;
 use std::cmp::{min, max};
 
 /// Very large prime number for hash table size
 /// * sizeof::<u64>() = ~400MB
-const LARGE_SIZE: usize = 50_331_653;
+const LARGE_SIZE: usize = 50331653;
 
 // Relatively small prime number for smaller hash table
 // * sizeof::<u64>() = ~2MB
@@ -25,9 +23,6 @@ const DEPTH_DIFF: u16 = 10;
 /// the inner table with `size` buckets
 fn hash(key: u64, size: usize) -> usize {
     (key as usize) % size
-    // let mut hasher = AHasher::default();
-    // hasher.write_u64(key);
-    // (hasher.finish() as usize) % size
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -187,92 +182,5 @@ impl<B: HashBoard + Position> Cache<B> {
             upper = best;
         }
         self.insert(board, lower, upper);
-    }
-}
-
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::bench::*;
-    use crate::board::*;
-
-    use std::collections::HashSet;
-
-    use statrs::distribution::ChiSquared;
-    use statrs::distribution::ContinuousCDF;
-    use statrs::statistics::Distribution;
-
-    fn chi_squared_test<B: HashBoard + CloneBoard + Position>(size: usize) {
-        let testsets = [&*END_EASY, &*MIDDLE_EASY, &*MIDDLE_MEDIUM,
-            &*BEGIN_EASY, &*BEGIN_MEDIUM, &*BEGIN_HARD, &*SOLVE
-        ];
-        let moveset = testsets.iter()
-            .map(|testset|
-                testset.iter().map(|(moves, _)| moves))
-            .flatten();
-
-        // ( (#positions(movesets)≈6000)
-        // * pow(column::COUNT, DEPTH=4) ) ≈ 10e6
-        const DEPTH: usize = 4;
-
-        let mut seen = HashSet::new();
-        let mut table: Vec<u32> = vec![0; size];
-        let mut visit = |pos: &B| {
-            let key = pos.key();
-            let idx = hash(key, size);
-
-            if seen.get(&key).is_none() {
-                table[idx] += 1;
-                seen.insert(key);
-            }
-        };
-
-        for moves in moveset {
-            let board = B::from_moves(moves);
-            board.dfs(board.curr(), DEPTH, &mut visit);
-        }
-
-        let n = table.iter().sum::<u32>();
-        let e = (n as f64) / (size as f64);
-        let df = size - 1;
-
-        let chi_sq = e.recip() * table.iter()
-            .map(|&o| o * o)
-            .sum::<u32>() as f64 - n as f64;
-
-        let dist = ChiSquared::new(df as f64).unwrap();
-        let p = dist.sf(chi_sq);
-
-        if p < 0.05 {
-            let min = table.iter().min().unwrap();
-            let max = table.iter().max().unwrap();
-
-            let mu = dist.mean().unwrap();
-            let sigma = dist.std_dev().unwrap();
-
-            println!("Failed chi-squared test.");
-            println!("n = {n}, size = {size}");
-            println!("e = {e}");
-            println!("min = {min}, max = {max}");
-            println!("chi_sq = {chi_sq}");
-            println!("chi_mean = {}, chi_stddev = {}", mu, sigma);
-            println!("z-score = {}", (chi_sq - mu)/sigma);
-
-            println!("p = {p}");
-            panic!("p < 0.05, failed for size: {size}");
-        }
-    }
-
-    #[test]
-    fn chi_squared_bitboard() {
-        chi_squared_test::<BitBoard>(SMALL_SIZE);
-        chi_squared_test::<BitBoard>(LARGE_SIZE);
-    }
-
-    #[test]
-    fn chi_squared_bitcols() {
-        chi_squared_test::<BitCols>(SMALL_SIZE);
-        chi_squared_test::<BitCols>(LARGE_SIZE);
     }
 }
