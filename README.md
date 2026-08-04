@@ -37,9 +37,10 @@ Play against the current best combination of solver and board (`Deepening<Minima
 
 ## See also
 [Pascal Pons' Solver](https://github.com/PascalPons/connect4)
+
 [Ben Rall's Solver](https://github.com/benjaminrall/connect-four-ai/tree/main)
 
-### Benchmark
+## Benchmark
 
 | Testset             | \[av. time\]ms \[av. pos\]# \[num pos\] |
 | ------------------- | --------------------------------------- |
