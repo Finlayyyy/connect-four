@@ -41,11 +41,14 @@ Play against the current best combination of solver and board (`Deepening<Minima
 
 ### Benchmark
 
-| easy bench with unlimited          | END_EASY     /1000 | MIDDLE_EASY  /1000 | MIDDLE_MEDIUM/1000 |
-| Deepening<MinimaxQuick>/BitBoard      |   0ms 5.21e1# 1000/|   0ms 4.53e2# 1000/|   3ms 3.98e4# 1000/|
-| medium bench with  unlimited          | BEGIN_EASY   /1000 | BEGIN_MEDIUM /1000 | SOLVE           /1 |
-| Deepening<MinimaxQuick>/BitBoard      |   0ms 3.69e3# 1000/|  90ms 1.12e6# 1000/| 77654ms 9.45e8#  1/|
-|  hard bench  with  unlimited          | BEGIN_HARD    /100 |
-| Deepening<MinimaxQuick>/BitBoard         |3282ms 4.01e7#  100/|
-|  hard bench with unlimited           | BEGIN_HARD   /1000 |
-| Deepening<MinimaxQuick>/BitBoard         |1638ms 2.02e7# 1000/|
+| Testset             | \[av. time\]ms \[av. pos\]# \[num pos\] |
+| ------------------- | --------------------------------------- |
+| END_EASY      /1000 | 0ms 5.21e1# 1000/    |
+| MIDDLE_EASY   /1000 | 0ms 4.53e2# 1000/    |
+| MIDDLE_MEDIUM /1000 | 3ms 3.98e4# 1000/    |
+| BEGIN_EASY    /1000 | 0ms 3.69e3# 1000/    |
+| BEGIN_MEDIUM  /1000 | 90ms 1.12e6# 1000/   |
+| SOLVE         /1    | 77654ms 9.45e8#  1/  |
+| BEGIN_HARD    /100  | 3282ms 4.01e7#  100/ |
+| BEGIN_HARD    /1000 | 638ms 2.02e7# 1000/  |
+
