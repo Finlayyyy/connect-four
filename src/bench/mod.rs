@@ -118,18 +118,32 @@ pub static SOLVE: LazyLock<TestSet> =
 
 /// Create a bencher with the given test sets.
 macro_rules! bencher {
+    (($($set:expr),+)) => {
+        Bencher::new_untimed(
+            vec![ $( $set.clone() ),+],
+        )
+    };
     (($($set:expr),+) with $dur:expr) => {
-        Bencher::new(
+        Bencher::new_timed(
             vec![$( $set.clone() ),+],
             $dur
         )
     };
+
+    ($count:literal from ($($set:expr),+)) => {
+        Bencher::new_untimed(
+            vec![ $( $set.clone().take($count) ),+],
+        )
+    };
+
     ($count:literal from ($($set:expr),+) with $dur:expr) => {
-        Bencher::new(
+        Bencher::new_timed(
             vec![ $( $set.clone().take($count) ),+],
             $dur
         )
     };
+
+
 }
 
 /// Use the bencher to bench the given combination
@@ -140,18 +154,33 @@ macro_rules! bench {
     };
 }
 
-pub struct Bencher {
+pub struct Bencher<S> {
     cases: Vec<TestSet>,
-    max_time: Duration,
+    boss: S,
 }
 
-impl Bencher {
-    /// Create a new bencher with given testsets and max_duration per testset
-    pub fn new(cases: Vec<TestSet>, max_time: Duration) -> Self {
+impl Bencher<Logger> {
+    pub fn new_untimed(cases: Vec<TestSet>) -> Self {
+        print!(
+            "~~~ BENCH START ~~~  unlimited           |",
+        );
+        Self::new(cases, Logger::new())
+    }
+}
+
+impl Bencher<Timeout<Logger>> {
+    pub fn new_timed(cases: Vec<TestSet>, max_time: Duration) -> Self {
         print!(
             "~~~ BENCH START ~~~ {:>10.0}s          |",
             max_time.as_secs()
         );
+        Self::new(cases, Timeout::new(max_time, Logger::new()))
+    }
+}
+
+impl<M: SolverManager> Bencher<M> {
+    /// Create a new bencher with given testsets and max_duration per testset
+    fn new(cases: Vec<TestSet>, boss: M) -> Self {
         for set in &cases {
             print!(" {:<19}|", set.name());
         }
@@ -161,7 +190,7 @@ impl Bencher {
             print!("              /{:>4} |", set.len());
         }
         println!();
-        Bencher { cases, max_time }
+        Bencher { cases, boss }
     }
 
     /// Bench the given combination of Board and Solver
@@ -173,8 +202,7 @@ impl Bencher {
         print!("{:<40} |", name);
 
         for testset in &self.cases {
-            let mut boss = Timeout::new(self.max_time, Logger::new());
-            boss.start_timer();
+            let mut boss = self.boss.clone();
 
             let mut cache = Cache::new_large();
 
@@ -187,7 +215,7 @@ impl Bencher {
                 .fold((0, 0), |(l, s), dur| (l + 1, s + dur));
 
             let mean_dur = dur_sum as f64 / dur_len as f64;
-            let mean_count = boss.inner.count() as f64 / dur_len as f64;
+            let mean_count = boss.count() as f64 / dur_len as f64;
 
             print!("{:4.0}ms {:.2e}# {:4.0}/|", mean_dur, mean_count, dur_len);
             io::stdout().flush().unwrap();
@@ -200,7 +228,7 @@ impl Bencher {
     }
 }
 
-impl Drop for Bencher {
+impl<M> Drop for Bencher<M> {
     fn drop(&mut self) {
         print!("                                         |");
         for _ in &self.cases {

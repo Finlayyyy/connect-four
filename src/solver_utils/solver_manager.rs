@@ -8,14 +8,18 @@ use std::time::Duration;
 /// solver. It provides a `check` method that
 /// returns a `ControlFlow` indicating whether
 /// the solver should continue or break.
-pub trait SolverManager {
+pub trait SolverManager: Clone {
     type Break;
 
     fn check(&mut self) -> ControlFlow<Self::Break, ()>;
+    fn count(&self) -> usize {
+        0
+    }
 }
 
+
 /// Allows the solver to continue indefinitely.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LaissezFaire {}
 
 impl SolverManager for LaissezFaire {
@@ -27,7 +31,7 @@ impl SolverManager for LaissezFaire {
 }
 
 /// Logs the number of iterations of the solver.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Logger {
     count: usize,
 }
@@ -35,10 +39,6 @@ pub struct Logger {
 impl Logger {
     pub fn new() -> Self {
         Logger { count: 0 }
-    }
-
-    pub fn count(&self) -> usize {
-        self.count
     }
 }
 
@@ -48,12 +48,16 @@ impl SolverManager for Logger {
         self.count += 1;
         ControlFlow::Continue(())
     }
+    fn count(&self) -> usize {
+        self.count
+    }
 }
 
 
 /// Wraps an inner `SolverManager` with a timeout for
 /// a given `Duration`. Starts a separate thread to
-/// periodically check the timeout.
+/// periodically check the timeout. The timeout begins
+/// on creation
 #[derive(Debug)]
 pub struct Timeout<M> {
     max_time: Duration,
@@ -64,15 +68,17 @@ pub struct Timeout<M> {
 impl<M> Timeout<M> {
     pub fn new(max_time: Duration, inner: M) -> Self {
         let timeout = Arc::new(AtomicBool::new(false));
-        Timeout {
+        let mut timeout = Timeout {
             max_time,
             timeout,
             inner,
-        }
+        };
+        timeout.start_timer();
+        timeout
     }
 
     /// Start the timer
-    pub fn start_timer(&mut self) {
+    fn start_timer(&mut self) {
         let max_time = self.max_time;
         let timeout = self.timeout.clone();
         thread::spawn(move || {
@@ -81,6 +87,7 @@ impl<M> Timeout<M> {
         });
     }
 }
+
 impl<M: SolverManager<Break = !>> SolverManager for Timeout<M> {
     type Break = ();
 
@@ -91,5 +98,16 @@ impl<M: SolverManager<Break = !>> SolverManager for Timeout<M> {
         } else {
             ControlFlow::Continue(())
         }
+    }
+
+    fn count(&self) -> usize {
+        self.inner.count()
+    }
+}
+
+
+impl<M: Clone> Clone for Timeout<M> {
+    fn clone(&self) -> Self {
+        Timeout::new(self.max_time, self.inner.clone())
     }
 }

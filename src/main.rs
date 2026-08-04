@@ -128,26 +128,22 @@ fn bench_hard() {
 fn bench_best() {
     println!("BENCH BEST");
     {
-        let bencher = bencher!(
-            (END_EASY, MIDDLE_EASY, MIDDLE_MEDIUM) with Duration::from_secs(30));
+        let bencher = bencher!((END_EASY, MIDDLE_EASY, MIDDLE_MEDIUM));
         bench!(bencher, BitBoard, Deepening<MinimaxQuick>);
         println!();
     }
     {
-        let bencher = bencher!(
-            (BEGIN_EASY, BEGIN_MEDIUM, SOLVE) with Duration::from_mins(5));
+        let bencher = bencher!((BEGIN_EASY, BEGIN_MEDIUM, SOLVE));
         bench!(bencher, BitBoard, Deepening<MinimaxQuick>);
         println!();
     }
     {
-        let bencher = bencher!(
-            100 from (BEGIN_HARD) with Duration::from_mins(9));
+        let bencher = bencher!(100 from (BEGIN_HARD));
         bench!(bencher, BitBoard, Deepening<MinimaxQuick>);
     }
     println!("Preliminary test complete.");
     {
-        let bencher = bencher!(
-            (BEGIN_HARD) with Duration::from_mins(90));
+        let bencher = bencher!((BEGIN_HARD));
         bench!(bencher, BitBoard, Deepening<MinimaxQuick>);
     }
 }
