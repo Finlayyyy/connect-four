@@ -1,6 +1,5 @@
 # Connect Four
-This project is intended to show multiple approaches to (strongly) solving the game of Connect Four, with a variety of different algorithms and board implementations.
-Much inspiration was taken from the well-loved guide on [Pascal Pons' Blog](http://blog.gamesolver.org/solving-connect-four/01-introduction/).
+This project is intended to show multiple approaches to (strongly) solving the game of Connect Four, with a variety of different algorithms and board implementations. The objective was to be able to solve the game in a reasonable amount of time, without using a pre-made book. Currently that time sits at less than 1m30. Much inspiration was taken from the well-loved guide on [Pascal Pons' Blog](http://blog.gamesolver.org/solving-connect-four/01-introduction/).
 
 AI Use Statement:
 All of the code in this project is my own work; written with my own hands.
