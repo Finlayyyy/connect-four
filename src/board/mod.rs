@@ -292,7 +292,7 @@ pub trait MutBoard: Board {
 /// used for caching board states in the solver. Must only take up
 /// `column::COUNT * column::COUNT = 49` bits.
 pub trait HashBoard: Board {
-    /// Returns a 49-bit hash key for the board state.
+    /// Returns a 49-bit non-zero hash key for the board state.
     fn key(&self) -> u64;
 
     /// Count the number of moves from the key

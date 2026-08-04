@@ -27,17 +27,20 @@ pub trait Position: Board {
 
     /// Eval score if the next move is a win for the current
     /// player
+    #[inline(always)]
     fn will_win_eval(&self) -> isize {
         ((MAX_MOVES + 1 - self.move_count()) / 2) as isize
     }
 
     /// Eval score if the opponent will win on their next move
+    #[inline(always)]
     fn will_lose_eval(&self) -> isize {
         -((MAX_MOVES - self.move_count()) as isize / 2)
     }
 
     /// Eval score if the position was just won on the
     /// previous move
+    #[inline(always)]
     fn just_won_eval(&self) -> isize {
         ((MAX_MOVES + 2 - self.move_count()) / 2) as isize
     }

@@ -24,9 +24,7 @@ impl ABSolver<BitBoard> for MinimaxQuick {
 
         boss.check()?;
         if pos.is_full() { return ControlFlow::Continue(0); }
-
-        (alpha, beta) = cache.get_and_bound(&pos, alpha, beta);
-        if alpha >= beta { return ControlFlow::Continue(beta); }
+        let prev_alpha = alpha;
 
         let Ok(nexts) = pos.possible_nonlosing_nexts() else {
             return ControlFlow::Continue(pos.will_lose_eval());
@@ -36,17 +34,19 @@ impl ABSolver<BitBoard> for MinimaxQuick {
         // or opp, it must be a draw
         if pos.remaining_moves() <= 2 { return ControlFlow::Continue(0); }
 
-        let moves: MoveSorter<{ column::COUNT }, _, _> = nexts
-            .map(|(col, next_board)| (-next_board.heuristic(), col))
-            .collect();
-
-        let prev_alpha = alpha;
         alpha = max(alpha, pos.will_lose_eval() + 1);
         beta = min(beta, pos.will_win_eval() - 1);
         if alpha >= beta {return ControlFlow::Continue(beta); }
 
-        for col in moves {
-            let next_pos = pos.placed_curr_unchecked(col);
+        (alpha, beta) = cache.get_and_bound(&pos, alpha, beta);
+        if alpha >= beta { return ControlFlow::Continue(beta); }
+
+        let moves: MoveSorter<{ column::COUNT }, _, _> = nexts
+            .map(|(_col, next_board)| (-next_board.heuristic(), next_board))
+            .collect();
+
+
+        for next_pos in moves {
             let eval = -Self::minimax(next_pos, boss, cache, -beta, -alpha)?;
             alpha = max(alpha, eval);
             if alpha >= beta { break; }
@@ -61,7 +61,12 @@ impl Solver<BitBoard> for MinimaxQuick {
     fn solve<M: SolverManager>(pos: BitBoard, boss: &mut M, cache: &mut Cache<BitBoard>) -> ControlFlow<M::Break, isize> {
         let min = pos.will_lose_eval();
         let max = pos.will_win_eval();
-        Self::minimax(pos, boss, cache, min, max)
+        if pos.curr_can_win() {
+            return ControlFlow::Continue(pos.will_win_eval());
+        } else {
+            Self::minimax(pos, boss, cache, min, max)
+        }
+
     }
 }
 

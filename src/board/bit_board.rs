@@ -28,7 +28,8 @@ pub struct BitBoard {
     mask: u64,
 }
 
-/// Width of the board
+/// Width of the connect-four board and
+/// height of BitBoard (column stride)
 const WIDTH: u64 = column::COUNT as u64;
 
 /// Bitmask of the bottom row
@@ -131,7 +132,7 @@ impl BitBoard {
         r |= p & (board << (3 * (WIDTH + 1)));
         r |= p & (board >> (WIDTH + 1));
         p >>= 3 * (WIDTH + 1);
-        r |= p & (board << (WIDTH + 1)); // problem
+        r |= p & (board << (WIDTH + 1));
         r |= p & (board >> (3 * (WIDTH + 1)));
 
         r & (BOARD_MASK ^ mask)
@@ -184,7 +185,7 @@ impl BitBoard {
         let mask = self.possible_nonlosing_mask()?;
         Ok(column::CENTRED.iter().filter_map(move |&col| {
             match (col_mask(col) & mask) > 0 {
-                true => Some((col, self.placed(col, self.curr()).unwrap())),
+                true => Some((col, self.placed_curr_unchecked(col))),
                 false => None,
             }
         }))
